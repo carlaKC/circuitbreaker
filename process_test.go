@@ -76,7 +76,7 @@ func testProcess(t *testing.T, event resolveEvent) {
 	require.True(t, resp.resume)
 
 	htlcEvent := &resolvedEvent{
-		circuitKey: key,
+		incomingCircuitKey: key,
 	}
 
 	switch event {
@@ -178,7 +178,7 @@ func testRateLimit(t *testing.T, mode Mode) {
 		require.False(t, resp.resume)
 
 		htlcEvent := &resolvedEvent{
-			circuitKey: key,
+			incomingCircuitKey: key,
 			settled:    false,
 		}
 
