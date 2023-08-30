@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/lightningnetwork/lnd/lnwire"
+	"github.com/lightningnetwork/lnd/queue"
 	"github.com/lightningnetwork/lnd/routing/route"
 	migrate "github.com/rubenv/sql-migrate"
 	_ "modernc.org/sqlite"
@@ -229,6 +230,14 @@ type HtlcInfo struct {
 	outgoingPeer    route.Vertex
 	incomingCircuit circuitKey
 	outgoingCircuit circuitKey
+}
+
+// Less must return true if this item is ordered before other and false otherwise, using resolve
+// time to sort by earliest resolution.
+//
+// Note: implements PriorityQueueItem interface.
+func (h *HtlcInfo) Less(other queue.PriorityQueueItem) bool {
+	return h.resolveTime.Before(other.(*HtlcInfo).resolveTime)
 }
 
 // RecordHtlcResolution records a HTLC that has been resolved and deletes the oldest rows from
