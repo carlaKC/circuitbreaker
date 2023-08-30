@@ -40,6 +40,12 @@ service Service {
             get:"/limits"
         };        
     }
+
+    rpc ListForwardingHistory (ListForwardingHistoryRequest) returns (ListForwardingHistoryResponse) {
+        option (google.api.http) = {
+            get:"/forwarding_history"
+        };
+    }
 }
 
 message GetInfoRequest {}
@@ -108,4 +114,44 @@ message Counter {
     int64 fail = 1;
     int64 success = 2;
     int64 reject = 3;
+}
+
+message ListForwardingHistoryRequest {
+    // The inclusive start time for the query, used to filter HTLCs by the time they were added 
+    // to local incoming channel. If this value is zero, it will be treated as the unix epoch.
+    int64 start_time_ns = 1;
+
+    // The exclusive end time for the query, used to filter HTLCs by the time they were added to 
+    // the local incoming channel. If this value is zero, it will be assumed to be the current time.
+    int64 end_time_ns = 2; 
+}
+
+message ListForwardingHistoryResponse {
+    repeated Forward forwards = 1; 
+}
+
+message CircuitKey {
+    uint64 short_channel_id = 1;
+    uint32 htlc_index = 2;
+}
+
+message Forward {
+    uint64 add_time_ns = 1;
+    uint64 resolve_time_ns = 2;
+    bool settled = 3;
+    uint64 fee_msat = 4;
+    string incoming_peer = 5;
+    CircuitKey incoming_circuit = 6;
+    string outgoing_peer = 7;
+    CircuitKey outgoing_circuit = 8;
+
+    // The portion of max htlcs in flight that are occupied on the outgoing channel, including the 
+    // current HTLC at the time of forward. If this value is zero, information about the channel 
+    // is not available from LND (this may be the case for old, closed channels).
+    float slot_utilization = 9;
+
+    // The portion of max htlcs in flight that is occupied on the outgoing channel, including the 
+    // current HLTC at the time of forwarding. If this value is 0, information about the channel 
+    // is not available from LND (this may be the case for old, closed channels).
+    float capacity_utilizatoin = 10;
 }

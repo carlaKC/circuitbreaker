@@ -6,8 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/lightningequipment/circuitbreaker/circuitbreakerrpc"
+	"github.com/lightningnetwork/lnd/lnwire"
+	"github.com/lightningnetwork/lnd/queue"
 	"github.com/lightningnetwork/lnd/routing/route"
 	"go.uber.org/zap"
 )
@@ -310,4 +313,162 @@ func (s *server) ListLimits(ctx context.Context,
 		DefaultLimit: defaultLimit,
 		Limits:       rpcLimits,
 	}, nil
+}
+
+func (s *server) ListForwardingHistory(ctx context.Context,
+	req *circuitbreakerrpc.ListForwardingHistoryRequest) (
+	*circuitbreakerrpc.ListForwardingHistoryResponse, error) {
+
+	var (
+		// By default query from the epoch until now.
+		startTime = time.Time{}
+		endTime   = time.Now()
+	)
+
+	if req.StartTimeNs != 0 {
+		startTime = time.Unix(0, req.StartTimeNs)
+	}
+
+	if req.EndTimeNs != 0 {
+		endTime = time.Unix(0, req.EndTimeNs)
+	}
+
+	if startTime.After(endTime) {
+		return nil, fmt.Errorf("start time: %v after end time: %v", startTime,
+			endTime)
+	}
+
+	// To report report on channel utilization, we need to get all the HTLCs that were in
+	// flight at the beginning of our window. If our start time is zero, we won't have anything
+	// in flight.
+	inFlight, err := s.db.ListInFlightAt(ctx, startTime)
+	if err != nil {
+		return nil, err
+	}
+
+	htlcs, err := s.db.ListForwardingHistory(ctx, startTime, endTime)
+	if err != nil {
+		return nil, err
+	}
+
+	rpcHtlcs, err := s.marshalFwdHistoryWithUsage(inFlight, htlcs)
+	if err != nil {
+		return nil, err
+	}
+
+	return &circuitbreakerrpc.ListForwardingHistoryResponse{
+		Forwards: rpcHtlcs,
+	}, nil
+}
+
+type inFlightTracker map[uint64]*channelUtilization
+
+func (s *server) newInFlightTracker() (inFlightTracker, error) {
+	tracker := inFlightTracker(
+		make(map[uint64]*channelUtilization),
+	)
+
+	openChannels, err := s.lnd.listChannels()
+	if err != nil {
+		return tracker, err
+	}
+
+	// TODO - do closed channels.
+
+	for chanID, channel := range openChannels {
+		tracker[chanID] = &channelUtilization{
+			availableSlots:   int(channel.maxAcceptedHtlcs),
+			availableBalance: channel.maxInFlight,
+		}
+	}
+
+	return tracker, nil
+}
+
+type channelUtilization struct {
+	availableSlots   int
+	availableBalance lnwire.MilliSatoshi
+
+	inFlightTotal lnwire.MilliSatoshi
+	inFlight      queue.PriorityQueue
+}
+
+func (c *channelUtilization) addHtlc(htlc *HtlcInfo) {
+	for c.inFlight.Len() != 0 {
+		// If the top item in-flight was resolved after the htlc's add timestamp the it
+		// was still in-fligh at the time the new HTLC was added.
+		top := c.inFlight.Top().(*HtlcInfo)
+		if top.resolveTime.After(htlc.addTime) {
+			break
+		}
+
+		// Otherwise, it was no longer in-flight by the time this HTLC was added so we
+		// can pop it off.
+		c.inFlight.Pop()
+		c.inFlightTotal -= top.outgoingMsat
+	}
+
+	c.inFlight.Push(htlc)
+	c.inFlightTotal += htlc.outgoingMsat
+}
+
+func (c *channelUtilization) utilization() (float32, float32) {
+	return float32(c.inFlight.Len()) / float32(c.availableSlots),
+		float32(c.inFlightTotal) / float32(c.availableBalance)
+}
+
+func (s *server) marshalFwdHistoryWithUsage(inFlight, htlcs []*HtlcInfo) (
+	[]*circuitbreakerrpc.Forward, error) {
+
+	// To be able to track utilization of our outgoing channels, we need to run through
+	// everything that was in flight and then update our running totals per-htlc.
+	outgoingUtilization, err := s.newInFlightTracker()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, htlc := range inFlight {
+		channel, ok := outgoingUtilization[htlc.outgoingCircuit.channel]
+		if !ok {
+			s.log.Debugf("HTLC outgoing channel: %v not found",
+				htlc.outgoingCircuit.channel)
+			continue
+		}
+		channel.addHtlc(htlc)
+	}
+
+	rpcHtlcs := make([]*circuitbreakerrpc.Forward, len(htlcs))
+
+	for i, htlc := range htlcs {
+		var slotUsage, liquidityUsage float32
+		if channel, ok := outgoingUtilization[htlc.outgoingCircuit.channel]; ok {
+			channel.addHtlc(htlc)
+			slotUsage, liquidityUsage = channel.utilization()
+		}
+
+		forward := &circuitbreakerrpc.Forward{
+			AddTimeNs:     uint64(htlc.addTime.UnixNano()),
+			ResolveTimeNs: uint64(htlc.resolveTime.UnixNano()),
+			Settled:       htlc.settled,
+			FeeMsat: uint64(
+				htlc.incomingMsat - htlc.outgoingMsat,
+			),
+			IncomingPeer: htlc.incomingPeer.String(),
+			IncomingCircuit: &circuitbreakerrpc.CircuitKey{
+				ShortChannelId: htlc.incomingCircuit.channel,
+				HtlcIndex:      uint32(htlc.incomingCircuit.htlc),
+			},
+			OutgoingPeer: htlc.outgoingPeer.String(),
+			OutgoingCircuit: &circuitbreakerrpc.CircuitKey{
+				ShortChannelId: htlc.outgoingCircuit.channel,
+				HtlcIndex:      uint32(htlc.outgoingCircuit.htlc),
+			},
+			SlotUtilization:     slotUsage,
+			CapacityUtilizatoin: liquidityUsage,
+		}
+
+		rpcHtlcs[i] = forward
+	}
+
+	return rpcHtlcs, nil
 }
