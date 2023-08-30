@@ -310,3 +310,89 @@ func (d *Db) limitHTLCRecords(ctx context.Context) error {
 	return err
 }
 
+// ListForwardingHistory returns a list of htlcs that were resolved within the
+// time range provided (start time is inclusive, end time is exclusive)
+func (d *Db) ListForwardingHistory(ctx context.Context, start, end time.Time) (
+	[]*HtlcInfo, error) {
+
+	return d.listforwardingHistoryWhere(ctx, "add_time >= ? AND add_time < ?",
+		start.UnixNano(), end.UnixNano())
+}
+
+// listForwardingHistoryWhere obtains a list of HTLCs from the forwarding history table,
+// appending a caller-provided where clause to the standard query.
+func (d *Db) listforwardingHistoryWhere(ctx context.Context, whereClause string,
+	args ...any) ([]*HtlcInfo, error) {
+
+	list := fmt.Sprintf(`SELECT 
+                add_time,
+                resolved_time,
+                settled,
+                incoming_amt_msat,
+                outgoing_amt_msat,
+                incoming_peer,
+                incoming_channel,
+                incoming_htlc_index,
+                outgoing_peer,
+                outgoing_channel,
+                outgoing_htlc_index 
+        FROM forwarding_history 
+        WHERE %v;`, whereClause)
+
+	rows, err := d.db.QueryContext(ctx, list, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var htlcs []*HtlcInfo
+	for rows.Next() {
+		var (
+			incomingPeer, outgoingPeer string
+			addTime, resolveTime       uint64
+			htlc                       HtlcInfo
+		)
+
+		err := rows.Scan(
+			&addTime,
+			&resolveTime,
+			&htlc.settled,
+			&htlc.incomingMsat,
+			&htlc.outgoingMsat,
+			&incomingPeer,
+			&htlc.incomingCircuit.channel,
+			&htlc.incomingCircuit.htlc,
+			&outgoingPeer,
+			&htlc.outgoingCircuit.channel,
+			&htlc.outgoingCircuit.htlc,
+		)
+		if err != nil {
+			return nil, err
+		}
+		htlc.addTime = time.Unix(0, int64(addTime))
+		htlc.resolveTime = time.Unix(0, int64(resolveTime))
+
+		htlc.incomingPeer, err = route.NewVertexFromStr(incomingPeer)
+		if err != nil {
+			return nil, err
+		}
+
+		htlc.outgoingPeer, err = route.NewVertexFromStr(outgoingPeer)
+		if err != nil {
+			return nil, err
+		}
+
+		htlcs = append(htlcs, &htlc)
+	}
+
+	return htlcs, nil
+}
+
+// ListInFlightAt returns all the HTLCs that were in flight at the timestamp provided. A HTLC is
+// considered in-flight at a given time if:
+// - It was added before (or at) the timestamp.
+// - It was removed after the timestamp.
+func (d *Db) ListInFlightAt(ctx context.Context, ts time.Time) ([]*HtlcInfo, error) {
+	nano := ts.UnixNano()
+	return d.listforwardingHistoryWhere(ctx, "add_time <= ? AND resolved_time >= ?", nano, nano)
+}
