@@ -74,10 +74,23 @@ var migrations = &migrate.MemoryMigrationSource{
 	},
 }
 
+const (
+	// defaultFwdHistoryLimit is the default limit we place on the forwarding_history table
+	// to prevent creation of an ever-growing table.
+	//
+	// Justification for value:
+	// * ~100 bytes per row in the table.
+	// * Help ourselves to 10MB of disk space
+	// -> 100_000 entries
+	defaultFwdHistoryLimit = 100_000
+)
+
 var defaultNodeKey = route.Vertex{}
 
 type Db struct {
 	db *sql.DB
+
+	fwdHistoryLimit int
 }
 
 func NewDb(dbPath string) (*Db, error) {
@@ -99,7 +112,8 @@ func NewDb(dbPath string) (*Db, error) {
 	}
 
 	return &Db{
-		db: db,
+		db:              db,
+		fwdHistoryLimit: defaultFwdHistoryLimit,
 	}, nil
 }
 
@@ -217,7 +231,8 @@ type HtlcInfo struct {
 	outgoingCircuit circuitKey
 }
 
-// RecordHtlcResolution records a HTLC that has been resolved.
+// RecordHtlcResolution records a HTLC that has been resolved and deletes the oldest rows from
+// the forwarding history table if the total row count has exceeded the configured limit.
 func (d *Db) RecordHtlcResolution(ctx context.Context,
 	htlc *HtlcInfo) error {
 
@@ -225,7 +240,7 @@ func (d *Db) RecordHtlcResolution(ctx context.Context,
 		return err
 	}
 
-	return nil
+	return d.limitHTLCRecords(ctx)
 }
 
 func (d *Db) insertHtlcResolution(ctx context.Context, htlc *HtlcInfo) error {
@@ -260,3 +275,38 @@ func (d *Db) insertHtlcResolution(ctx context.Context, htlc *HtlcInfo) error {
 
 	return err
 }
+
+func (d *Db) limitHTLCRecords(ctx context.Context) error {
+	query := `SELECT COUNT(id) from forwarding_history`
+
+	var rowCount int
+	err := d.db.QueryRow(query).Scan(&rowCount)
+	if err != nil {
+		return err
+	}
+
+	if rowCount < d.fwdHistoryLimit {
+		return nil
+	}
+
+	// If we've hit our row count, delete oldest entries over the row limit plus an extra
+	// 10% of the limit to free up space so that we don't need to constantly delete on each
+	// insert.
+	//
+	// Note: if fwdHistoryLimit < 10 the additional 10% will be zero, so we'll just clear the
+	// rows beyond our limit. For such a small limit, we're expecting to be deleting all the
+	// time anyway, so this isn't a big performance hit.
+	offset := d.fwdHistoryLimit - (d.fwdHistoryLimit / 10)
+
+	query = fmt.Sprintf(
+		`DELETE FROM forwarding_history 
+                ORDER BY add_time 
+                DESC OFFSET %v;`,
+		offset,
+	)
+
+	_, err = d.db.ExecContext(ctx, query)
+
+	return err
+}
+
