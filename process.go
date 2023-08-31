@@ -66,6 +66,7 @@ type rateCountersRequest struct {
 }
 
 type process struct {
+	db     *Db
 	client lndclient
 	limits *Limits
 	log    *zap.SugaredLogger
@@ -89,8 +90,9 @@ type process struct {
 	resolvedCallback func()
 }
 
-func NewProcess(client lndclient, log *zap.SugaredLogger, limits *Limits) *process {
+func NewProcess(client lndclient, log *zap.SugaredLogger, limits *Limits, db *Db) *process {
 	return &process{
+		db:                      db,
 		log:                     log,
 		client:                  client,
 		interceptChan:           make(chan interceptEvent),
@@ -253,10 +255,8 @@ func (p *process) createPeerController(ctx context.Context, peer route.Vertex,
 		lnd:       p.client,
 		pubKey:    peer,
 		now:       time.Now,
-		htlcCompleted: func(_ context.Context, _ *HtlcInfo) error {
-			return nil
-		},
-	}
+		htlcCompleted: p.db.RecordHtlcResolution,
+        }
 	ctrl := newPeerController(cfg)
 
 	startGo(func() error {
