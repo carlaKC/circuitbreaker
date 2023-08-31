@@ -51,6 +51,10 @@ type resolvedEvent struct {
 	outgoingCircuitKey circuitKey
 	settled            bool
 	timestamp          time.Time
+
+	// Note: outgoing peer will not be provided by LND, it should be supplemented on receipt
+	// of a resolved event.
+	outgoingPeer route.Vertex
 }
 
 type rateCounters struct {
@@ -305,6 +309,16 @@ func (p *process) eventLoop(ctx context.Context) error {
 			}
 
 			ctrl := p.getPeerController(ctx, chanInfo.peer, group.Go)
+
+			// Lookup the outgoing peer to supplement the
+			// information on the resolved event.
+			chanInfo, err = p.getChanInfo(
+				resolvedEvent.outgoingCircuitKey.channel,
+			)
+			if err != nil {
+				return err
+			}
+			resolvedEvent.outgoingPeer = chanInfo.peer
 
 			if err := ctrl.resolved(ctx, resolvedEvent); err != nil {
 				return err

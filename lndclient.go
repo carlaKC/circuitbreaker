@@ -79,6 +79,7 @@ func (h *lndHtlcEventsClient) recvInternal() (*resolvedEvent, error) {
 			htlc:    event.OutgoingHtlcId,
 		},
 		timestamp: time.Unix(0, int64(event.TimestampNs)),
+		// Note: outgoing peer is not reported here, as it is not available.
 	}, nil
 }
 
