@@ -285,9 +285,9 @@ func (s *stubLndClient) generateHtlcs(key route.Vertex, peer *stubPeer,
 		}
 
 		s.interceptRequestChan <- &interceptedEvent{
-			circuitKey:   circuitKeyIn,
-			incomingMsat: lnwire.MilliSatoshi(incomingAmount),
-			outgoingMsat: lnwire.MilliSatoshi(outgoingAmount),
+			incomingCircuitKey: circuitKeyIn,
+			incomingMsat:       lnwire.MilliSatoshi(incomingAmount),
+			outgoingMsat:       lnwire.MilliSatoshi(outgoingAmount),
 		}
 
 		htlcId++
