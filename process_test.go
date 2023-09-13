@@ -396,7 +396,7 @@ func TestChannelNotFound(t *testing.T) {
 		htlc:    4,
 	}
 	client.htlcInterceptorRequests <- &interceptedEvent{
-		circuitKey: key,
+		incomingCircuitKey: key,
 	}
 
 	select {
@@ -484,7 +484,7 @@ func testLookupOutgoingChannel(t *testing.T, settled, outgoingFound bool,
 		htlc:    5,
 	}
 	client.htlcInterceptorRequests <- &interceptedEvent{
-		circuitKey: key,
+		incomingCircuitKey: key,
 	}
 
 	resp := <-client.htlcInterceptorResponses
@@ -551,7 +551,7 @@ func TestClosedChannelHtlc(t *testing.T) {
 		htlc:    3,
 	}
 	client.htlcInterceptorRequests <- &interceptedEvent{
-		circuitKey: key,
+		incomingCircuitKey: key,
 	}
 
 	resp := <-client.htlcInterceptorResponses
