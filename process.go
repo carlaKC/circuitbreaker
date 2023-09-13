@@ -50,6 +50,11 @@ type interceptEvent struct {
 	resume             func(resume bool, endorsed lrc.Endorsement) error
 }
 
+func (i interceptEvent) String() string {
+	return fmt.Sprintf("%v (%v -> %v)", i.incomingMsat-i.outgoingMsat,
+		i.incomingCircuitKey.channel, i.outgoingChannel)
+}
+
 type resolvedEvent struct {
 	incomingCircuitKey circuitKey
 	outgoingCircuitKey circuitKey

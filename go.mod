@@ -9,6 +9,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.15.1
 	github.com/lightningequipment/circuitbreaker/circuitbreakerrpc v0.0.0-00010101000000-000000000000
 	github.com/lightningnetwork/lnd v0.15.4-beta
+	github.com/lightningnetwork/lnd/clock v1.1.0
 	github.com/paulbellamy/ratecounter v0.2.0
 	github.com/rubenv/sql-migrate v1.2.0
 	github.com/stretchr/testify v1.8.4
@@ -94,7 +95,6 @@ require (
 	github.com/lightninglabs/neutrino v0.16.0 // indirect
 	github.com/lightninglabs/neutrino/cache v1.1.1 // indirect
 	github.com/lightningnetwork/lightning-onion v1.2.1-0.20230823005744-06182b1d7d2f // indirect
-	github.com/lightningnetwork/lnd/clock v1.1.0 // indirect
 	github.com/lightningnetwork/lnd/healthcheck v1.2.2 // indirect
 	github.com/lightningnetwork/lnd/kvdb v1.4.2 // indirect
 	github.com/lightningnetwork/lnd/queue v1.1.0 // indirect
