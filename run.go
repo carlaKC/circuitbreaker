@@ -88,6 +88,7 @@ func run(c *cli.Context) error {
 		return err
 	}
 
+	limits.Default.Mode = ModeLRCActive
 	p := NewProcess(client, log, limits, db)
 
 	grpcServer := grpc.NewServer(
