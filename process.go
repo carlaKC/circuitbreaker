@@ -40,10 +40,12 @@ type circuitKey struct {
 }
 
 type interceptEvent struct {
-	circuitKey
-	incomingMsat lnwire.MilliSatoshi
-	outgoingMsat lnwire.MilliSatoshi
-	resume       func(bool) error
+	incomingCircuitKey circuitKey
+	outgoingChannel    uint64
+	incomingMsat       lnwire.MilliSatoshi
+	outgoingMsat       lnwire.MilliSatoshi
+	cltvDelta          uint32
+	resume             func(bool) error
 }
 
 type resolvedEvent struct {
@@ -301,7 +303,9 @@ func (p *process) eventLoop(ctx context.Context) error {
 	for {
 		select {
 		case interceptEvent := <-p.interceptChan:
-			chanInfo, err := p.getChanInfo(interceptEvent.channel)
+			chanInfo, err := p.getChanInfo(
+				interceptEvent.incomingCircuitKey.channel,
+			)
 			if err != nil {
 				return err
 			}
@@ -480,10 +484,12 @@ func (p *process) processInterceptor(ctx context.Context,
 
 		select {
 		case p.interceptChan <- interceptEvent{
-			circuitKey:   key,
-			incomingMsat: event.incomingMsat,
-			outgoingMsat: event.outgoingMsat,
-			resume:       resume,
+			incomingCircuitKey: key,
+			outgoingChannel:    event.outgoingChannel,
+			incomingMsat:       event.incomingMsat,
+			outgoingMsat:       event.outgoingMsat,
+			cltvDelta:          uint32(event.cltvDelta),
+			resume:             resume,
 		}:
 
 		case <-ctx.Done():
