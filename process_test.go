@@ -72,7 +72,7 @@ func testProcess(t *testing.T, event resolveEvent) {
 		htlc:    5,
 	}
 	client.htlcInterceptorRequests <- &interceptedEvent{
-		circuitKey: key,
+		incomingCircuitKey: key,
 	}
 
 	resp := <-client.htlcInterceptorResponses
@@ -156,7 +156,7 @@ func testRateLimit(t *testing.T, mode Mode) {
 		htlc:    5,
 	}
 	interceptReq := &interceptedEvent{
-		circuitKey: key,
+		incomingCircuitKey: key,
 	}
 
 	// First htlc accepted.
@@ -165,13 +165,13 @@ func testRateLimit(t *testing.T, mode Mode) {
 	require.True(t, resp.resume)
 
 	// Second htlc right after is also accepted because of burst size 2.
-	interceptReq.circuitKey.htlc++
+	interceptReq.incomingCircuitKey.htlc++
 	client.htlcInterceptorRequests <- interceptReq
 	resp = <-client.htlcInterceptorResponses
 	require.True(t, resp.resume)
 
 	// Third htlc again right after should hit the rate limit.
-	interceptReq.circuitKey.htlc++
+	interceptReq.incomingCircuitKey.htlc++
 	client.htlcInterceptorRequests <- interceptReq
 
 	interceptStart := time.Now()
@@ -248,7 +248,7 @@ func testMaxPending(t *testing.T, mode Mode) {
 		htlc:    5,
 	}
 	interceptReq := &interceptedEvent{
-		circuitKey: key,
+		incomingCircuitKey: key,
 	}
 
 	// First htlc accepted.
@@ -257,7 +257,7 @@ func testMaxPending(t *testing.T, mode Mode) {
 	require.True(t, resp.resume)
 
 	// Second htlc should be hitting the max pending htlcs limit.
-	interceptReq.circuitKey.htlc++
+	interceptReq.incomingCircuitKey.htlc++
 	client.htlcInterceptorRequests <- interceptReq
 
 	if mode == ModeQueue {
@@ -355,7 +355,7 @@ func TestBlocked(t *testing.T) {
 		htlc:    5,
 	}
 	interceptReq := &interceptedEvent{
-		circuitKey: key,
+		incomingCircuitKey: key,
 	}
 
 	// Htlc blocked.

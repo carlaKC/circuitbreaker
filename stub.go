@@ -226,7 +226,7 @@ func (s *stubLndClient) generateHtlcs(key route.Vertex, peer *stubPeer) {
 		s.pendingHtlcsLock.Unlock()
 
 		s.interceptRequestChan <- &interceptedEvent{
-			circuitKey: circuitKey,
+			incomingCircuitKey: circuitKey,
 		}
 
 		htlcId++

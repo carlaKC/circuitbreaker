@@ -455,7 +455,7 @@ func (p *process) processInterceptor(ctx context.Context,
 			return err
 		}
 
-		key := event.circuitKey
+		key := event.incomingCircuitKey
 
 		resume := func(resume bool) error {
 			return interceptor.send(&interceptResponse{
