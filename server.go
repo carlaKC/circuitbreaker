@@ -98,6 +98,12 @@ func unmarshalLimit(rpcLimit *circuitbreakerrpc.Limit) (Limit, error) {
 	case circuitbreakerrpc.Mode_MODE_BLOCK:
 		limit.Mode = ModeBlock
 
+	case circuitbreakerrpc.Mode_MODE_LRC_ACTIVE:
+		limit.Mode = ModeLRCActive
+
+	case circuitbreakerrpc.Mode_MODE_LRC_LOGGING:
+		limit.Mode = ModeLRCLogging
+
 	default:
 		return Limit{}, errors.New("unknown mode")
 	}
@@ -220,6 +226,12 @@ func marshalLimit(limit Limit) (*circuitbreakerrpc.Limit, error) {
 
 	case ModeBlock:
 		rpcLimit.Mode = circuitbreakerrpc.Mode_MODE_BLOCK
+
+	case ModeLRCActive:
+		rpcLimit.Mode = circuitbreakerrpc.Mode_MODE_LRC_ACTIVE
+
+	case ModeLRCLogging:
+		rpcLimit.Mode = circuitbreakerrpc.Mode_MODE_LRC_LOGGING
 
 	default:
 		return nil, errors.New("unknown mode")

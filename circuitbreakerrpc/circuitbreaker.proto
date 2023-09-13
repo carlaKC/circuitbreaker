@@ -63,6 +63,8 @@ enum Mode {
     MODE_QUEUE = 1;
     MODE_QUEUE_PEER_INITIATED = 2;
     MODE_BLOCK = 3;
+    MODE_LRC_ACTIVE = 4;
+    MODE_LRC_LOGGING = 5;
 }
 
 message ClearLimitsRequest {

@@ -7,7 +7,6 @@ const (
 	ModeQueue
 	ModeQueuePeerInitiated
 	ModeBlock
-
 	ModeLRCActive
         ModeLRCLogging
 )

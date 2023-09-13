@@ -201,6 +201,11 @@ func (d *Db) GetLimits(ctx context.Context) (*Limits, error) {
 		case "BLOCK":
 			limit.Mode = ModeBlock
 
+		case "LRC_ACTIVE":
+			limit.Mode = ModeLRCActive
+
+		case "LRC_LOGGING":
+			limit.Mode = ModeLRCLogging
 		default:
 			return nil, errors.New("unknown mode")
 		}
