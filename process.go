@@ -321,11 +321,18 @@ func (p *process) eventLoop(ctx context.Context) error {
 
 			ctrl := p.getController(ctx, chanInfo.peer, group.Go)
 
+			chanOut, err := p.getChanInfo(
+				interceptEvent.incomingCircuitKey.channel,
+			)
+			if err != nil {
+				return err
+			}
+
 			peerEvent := peerInterceptEvent{
 				interceptEvent: interceptEvent,
 				peerInitiated:  !chanInfo.initiator,
 			}
-			if err := ctrl.process(ctx, peerEvent); err != nil {
+			if err := ctrl.process(ctx, peerEvent, chanOut); err != nil {
 				return err
 			}
 
