@@ -88,8 +88,8 @@ type process struct {
 	chanMap  map[uint64]*channel
 	aliasMap map[route.Vertex]string
 
-	peerCtrls map[route.Vertex]*peerController
-
+	peerCtrls           map[route.Vertex]*peerController
+	resourceController  *resourceController
 	burstSize           int
 	peerRefreshInterval time.Duration
 
@@ -110,9 +110,12 @@ func NewProcess(client lndclient, log *zap.SugaredLogger, limits *Limits, db *Db
 		chanMap:                 make(map[uint64]*channel),
 		aliasMap:                make(map[route.Vertex]string),
 		peerCtrls:               make(map[route.Vertex]*peerController),
-		limits:                  limits,
-		burstSize:               burstSize,
-		peerRefreshInterval:     defaultPeerRefreshInterval,
+		resourceController: newResourceController(
+			limits.Default.Mode == ModeLRCLogging,
+		),
+		limits:              limits,
+		burstSize:           burstSize,
+		peerRefreshInterval: defaultPeerRefreshInterval,
 	}
 }
 
@@ -235,7 +238,16 @@ func (p *process) peerRefreshLoop(ctx context.Context) error {
 func (p *process) getController(ctx context.Context, peer route.Vertex,
 	startGo func(func() error)) controller {
 
-	return p.getPeerController(ctx, peer, startGo)
+	switch p.limits.Default.Mode {
+	case ModeLRCActive:
+		return p.resourceController
+
+	case ModeLRCLogging:
+		return p.resourceController
+
+	default:
+		return p.getPeerController(ctx, peer, startGo)
+	}
 }
 
 func (p *process) getPeerController(ctx context.Context, peer route.Vertex,

@@ -7,6 +7,9 @@ const (
 	ModeQueue
 	ModeQueuePeerInitiated
 	ModeBlock
+
+	ModeLRCActive
+        ModeLRCLogging
 )
 
 func (m Mode) String() string {
@@ -22,6 +25,13 @@ func (m Mode) String() string {
 
 	case ModeBlock:
 		return "BLOCK"
+
+	case ModeLRCActive:
+		return "LRC_ACTIVE"
+
+	case ModeLRCLogging:
+                return "LRC_LOGGING"
+
 
 	default:
 		panic("unknown mode")
