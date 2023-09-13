@@ -55,6 +55,9 @@ func (e *eventCounter) Rates() (int64, int64, int64) {
 	return e.success.Rate(), e.fail.Rate(), e.reject.Rate()
 }
 
+// Compile time check that peerController implements the controller interface.
+var _ controller = (*peerController)(nil)
+
 type peerController struct {
 	cfg             Limit
 	limiter         *rate.Limiter

@@ -224,6 +224,13 @@ func (p *process) peerRefreshLoop(ctx context.Context) error {
 	}
 }
 
+// getController fetches the appropriate traffic controller.
+func (p *process) getController(ctx context.Context, peer route.Vertex,
+	startGo func(func() error)) controller {
+
+	return p.getPeerController(ctx, peer, startGo)
+}
+
 func (p *process) getPeerController(ctx context.Context, peer route.Vertex,
 	startGo func(func() error)) *peerController {
 
@@ -312,7 +319,7 @@ func (p *process) eventLoop(ctx context.Context) error {
 				return err
 			}
 
-			ctrl := p.getPeerController(ctx, chanInfo.peer, group.Go)
+			ctrl := p.getController(ctx, chanInfo.peer, group.Go)
 
 			peerEvent := peerInterceptEvent{
 				interceptEvent: interceptEvent,
@@ -330,7 +337,7 @@ func (p *process) eventLoop(ctx context.Context) error {
 				return err
 			}
 
-			ctrl := p.getPeerController(ctx, chanInfo.peer, group.Go)
+			ctrl := p.getController(ctx, chanInfo.peer, group.Go)
 
 			// Lookup the outgoing peer to supplement the
 			// information on the resolved event.
@@ -422,7 +429,7 @@ func (p *process) eventLoop(ctx context.Context) error {
 
 			// Try to get the existing peer controller. If it doesn't exist, it
 			// will be created. This causes the peer to be reported over grpc.
-			_ = p.getPeerController(ctx, newPeer, group.Go)
+			_ = p.getController(ctx, newPeer, group.Go)
 		}
 	}
 }
