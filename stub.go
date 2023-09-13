@@ -300,9 +300,9 @@ func (s *stubLndClient) generateHtlcs(ctx context.Context, key route.Vertex, pee
 
 		select {
 		case s.interceptRequestChan <- &interceptedEvent{
-			circuitKey:   circuitKeyIn,
-			incomingMsat: lnwire.MilliSatoshi(incomingAmount),
-			outgoingMsat: lnwire.MilliSatoshi(outgoingAmount),
+			incomingCircuitKey: circuitKeyIn,
+			incomingMsat:       lnwire.MilliSatoshi(incomingAmount),
+			outgoingMsat:       lnwire.MilliSatoshi(outgoingAmount),
 		}:
 		case <-ctx.Done():
 			return

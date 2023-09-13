@@ -105,7 +105,7 @@ type lndHtlcInterceptorClient struct {
 }
 
 type interceptedEvent struct {
-	circuitKey   circuitKey
+	incomingCircuitKey   circuitKey
 	incomingMsat lnwire.MilliSatoshi
 	outgoingMsat lnwire.MilliSatoshi
 }
@@ -117,7 +117,7 @@ func (h *lndHtlcInterceptorClient) recv() (*interceptedEvent, error) {
 	}
 
 	return &interceptedEvent{
-		circuitKey: circuitKey{
+		incomingCircuitKey: circuitKey{
 			channel: event.IncomingCircuitKey.ChanId,
 			htlc:    event.IncomingCircuitKey.HtlcId,
 		},
