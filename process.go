@@ -54,6 +54,13 @@ type interceptEvent struct {
 	resume             func(bool, lrc.Endorsement) error
 }
 
+func (i interceptEvent) String() string {
+	return fmt.Sprintf("incoming htlc endorsed: %v, amount out: %v with "+
+		"fee: %v (%v -> %v)",
+		i.endorsed, i.outgoingMsat, i.incomingMsat-i.outgoingMsat,
+		i.incomingCircuitKey.channel, i.outgoingChannel)
+}
+
 type resolvedEvent struct {
 	incomingCircuitKey circuitKey
 	outgoingCircuitKey circuitKey
