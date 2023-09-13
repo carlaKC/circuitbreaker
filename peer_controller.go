@@ -275,12 +275,12 @@ func (p *peerController) run(ctx context.Context) error {
 		// A new htlc is intercepted. Depending on the mode the controller is
 		// running in, the htlc will either be queued or handled immediately.
 		case event := <-p.interceptChan:
-			logger := p.keyLogger(event.circuitKey)
+			logger := p.keyLogger(event.incomingCircuitKey)
 
 			// Replays can happen when the htlcs map is initialized with a
 			// pending htlc on startup, and then a forward event happens for
 			// that htlc. For those htlcs, just resume.
-			_, ok := p.htlcs[event.circuitKey]
+			_, ok := p.htlcs[event.incomingCircuitKey]
 			if ok {
 				if err := event.resume(true); err != nil {
 					return err
@@ -464,7 +464,7 @@ func getRate(maxHourlyRate int64) rate.Limit {
 }
 
 func (p *peerController) forward(event interceptEvent) error {
-	p.htlcs[event.circuitKey] = &inFlightHtlc{
+	p.htlcs[event.incomingCircuitKey] = &inFlightHtlc{
 		addedTs:      p.now(),
 		incomingMsat: event.incomingMsat,
 		outgoingMsat: event.outgoingMsat,
@@ -475,7 +475,7 @@ func (p *peerController) forward(event interceptEvent) error {
 		return err
 	}
 
-	logger := p.keyLogger(event.circuitKey)
+	logger := p.keyLogger(event.incomingCircuitKey)
 	logger.Infow("Forwarded", "pending_htlcs", len(p.htlcs))
 
 	return nil
