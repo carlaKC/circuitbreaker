@@ -4,13 +4,14 @@ go 1.19
 
 require (
 	github.com/btcsuite/btcd/btcutil v1.1.3
+	github.com/carlakc/lrc v0.0.0-20230918202018-10a0216a26c8
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.15.1
 	github.com/lightningequipment/circuitbreaker/circuitbreakerrpc v0.0.0-00010101000000-000000000000
 	github.com/lightningnetwork/lnd v0.15.4-beta
 	github.com/paulbellamy/ratecounter v0.2.0
 	github.com/rubenv/sql-migrate v1.2.0
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.4
 	github.com/urfave/cli v1.22.9
 	go.uber.org/zap v1.17.0
 	golang.org/x/sync v0.2.0

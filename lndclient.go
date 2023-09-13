@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/carlakc/lrc"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
 	"github.com/lightningnetwork/lnd/lnwire"
@@ -104,18 +105,33 @@ type lndHtlcInterceptorClient struct {
 	client routerrpc.Router_HtlcInterceptorClient
 }
 
+type endorsedSignal uint8
+
 type interceptedEvent struct {
 	incomingCircuitKey circuitKey
 	outgoingChannel    uint64
 	incomingMsat       lnwire.MilliSatoshi
 	outgoingMsat       lnwire.MilliSatoshi
 	cltvDelta          uint64
+	endorsed           lrc.Endorsement
 }
 
 func (h *lndHtlcInterceptorClient) recv() (*interceptedEvent, error) {
 	event, err := h.client.Recv()
 	if err != nil {
 		return nil, err
+	}
+
+	endorsed := lrc.EndorsementNone
+	tlvType := uint64(lnwire.EndorsedHTLCExperimental)
+	endorsedBytes, ok := event.IncomingUpdateAddCustomRecords[tlvType]
+	if ok {
+		// Any non-zero value is considered to be an endorsement signal.
+		if endorsedBytes[0] == 0x0 {
+			endorsed = lrc.EndorsementFalse
+		} else {
+			endorsed = lrc.EndorsementTrue
+		}
 	}
 
 	return &interceptedEvent{
@@ -127,6 +143,7 @@ func (h *lndHtlcInterceptorClient) recv() (*interceptedEvent, error) {
 		incomingMsat:    lnwire.MilliSatoshi(event.IncomingAmountMsat),
 		outgoingMsat:    lnwire.MilliSatoshi(event.OutgoingAmountMsat),
 		cltvDelta:       uint64(event.IncomingExpiry) - uint64(event.OutgoingExpiry),
+		endorsed:        endorsed,
 	}, nil
 }
 
