@@ -337,18 +337,18 @@ func (p *process) eventLoop(ctx context.Context) error {
 			}
 
 		case resolvedEvent := <-p.resolveChan:
-			chanInfo, err := p.getChanInfo(
+			chanIn, err := p.getChanInfo(
 				resolvedEvent.incomingCircuitKey.channel,
 			)
 			if err != nil {
 				return err
 			}
 
-			ctrl := p.getController(ctx, chanInfo.peer, group.Go)
+			ctrl := p.getController(ctx, chanIn.peer, group.Go)
 
 			// Lookup the outgoing peer to supplement the
 			// information on the resolved event.
-			chanInfo, err = p.getChanInfo(
+			chanOut, err := p.getChanInfo(
 				resolvedEvent.outgoingCircuitKey.channel,
 			)
 			if err != nil {
@@ -357,7 +357,8 @@ func (p *process) eventLoop(ctx context.Context) error {
 
 			if err := ctrl.resolved(ctx, peerResolvedEvent{
 				resolvedEvent: resolvedEvent,
-				outgoingPeer:  chanInfo.peer,
+				outgoingPeer:  chanOut.peer,
+				incomingPeer:  chanIn.peer,
 			}); err != nil {
 				return err
 			}

@@ -93,6 +93,7 @@ type peerInterceptEvent struct {
 type peerResolvedEvent struct {
 	resolvedEvent
 	outgoingPeer route.Vertex
+	incomingPeer route.Vertex
 }
 
 type peerState struct {
