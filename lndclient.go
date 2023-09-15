@@ -226,8 +226,10 @@ func (l *lndclientGrpc) getInfo() (*info, error) {
 }
 
 type channel struct {
-	peer      route.Vertex
-	initiator bool
+	peer              route.Vertex
+	initiator         bool
+	countInFlight     int
+	liquidityInFlight uint64
 }
 
 func (l *lndclientGrpc) listChannels() (map[uint64]*channel, error) {
@@ -249,6 +251,10 @@ func (l *lndclientGrpc) listChannels() (map[uint64]*channel, error) {
 		chans[rpcChan.ChanId] = &channel{
 			peer:      peer,
 			initiator: rpcChan.Initiator,
+			countInFlight: int(
+				rpcChan.RemoteConstraints.MaxAcceptedHtlcs,
+			),
+			liquidityInFlight: rpcChan.RemoteConstraints.MaxPendingAmtMsat,
 		}
 	}
 
