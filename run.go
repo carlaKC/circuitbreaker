@@ -88,7 +88,15 @@ func run(c *cli.Context) error {
 		return err
 	}
 
-	p := NewProcess(client, log, limits, db)
+	var lrc LRC
+	if c.Bool("lrc_active") {
+		lrc = LRCActive
+	}
+
+	if c.Bool("lrc_logging") {
+		lrc = LRCLogging
+	}
+	p := NewProcess(client, log, limits, db, lrc)
 
 	grpcServer := grpc.NewServer(
 		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer()),

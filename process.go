@@ -86,8 +86,8 @@ type process struct {
 	chanMap  map[uint64]*channel
 	aliasMap map[route.Vertex]string
 
-	peerCtrls map[route.Vertex]*peerController
-
+	peerCtrls           map[route.Vertex]*peerController
+	resourceController  *resourceController
 	burstSize           int
 	peerRefreshInterval time.Duration
 
@@ -95,8 +95,10 @@ type process struct {
 	resolvedCallback func()
 }
 
-func NewProcess(client lndclient, log *zap.SugaredLogger, limits *Limits, db *Db) *process {
-	return &process{
+func NewProcess(client lndclient, log *zap.SugaredLogger, limits *Limits, db *Db,
+	lrc LRC) *process {
+
+	p := &process{
 		db:                      db,
 		log:                     log,
 		client:                  client,
@@ -112,6 +114,20 @@ func NewProcess(client lndclient, log *zap.SugaredLogger, limits *Limits, db *Db
 		burstSize:               burstSize,
 		peerRefreshInterval:     defaultPeerRefreshInterval,
 	}
+
+	switch lrc {
+	case LRCActive:
+		p.resourceController = newResourceController(
+			false, db.RecordHtlcResolution,
+		)
+
+	case LRCLogging:
+		p.resourceController = newResourceController(
+			true, db.RecordHtlcResolution,
+		)
+	}
+
+	return p
 }
 
 type updateLimitEvent struct {
@@ -232,6 +248,10 @@ func (p *process) peerRefreshLoop(ctx context.Context) error {
 // getController fetches the appropriate traffic controller.
 func (p *process) getController(ctx context.Context, peer route.Vertex,
 	startGo func(func() error)) controller {
+
+	if p.resourceController != nil {
+		return p.resourceController
+	}
 
 	return p.getPeerController(ctx, peer, startGo)
 }

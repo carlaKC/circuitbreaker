@@ -27,3 +27,11 @@ func (m Mode) String() string {
 		panic("unknown mode")
 	}
 }
+
+type LRC int
+
+const (
+	LRCInactive LRC = iota
+	LRCActive
+	LRCLogging
+)

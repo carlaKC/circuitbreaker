@@ -129,6 +129,16 @@ func main() {
 			Value: "127.0.0.1:9234",
 			Usage: "grpc server listen address",
 		},
+		cli.BoolFlag{
+			Name: "lrc_active",
+			Usage: "set to enable local resource conservation that will " +
+				"actively reject htlcs",
+		},
+		cli.BoolFlag{
+			Name: "lrc_logging",
+			Usage: "set to enable local resource conservation that will " +
+				"log results without impacting traffic",
+		},
 		httpListenFlag,
 		stubFlag,
 	}
