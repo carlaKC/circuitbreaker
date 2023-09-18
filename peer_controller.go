@@ -5,6 +5,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/carlakc/lrc"
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/lightningnetwork/lnd/routing/route"
 	"github.com/paulbellamy/ratecounter"
@@ -282,10 +283,11 @@ func (p *peerController) run(ctx context.Context) error {
 
 			// Replays can happen when the htlcs map is initialized with a
 			// pending htlc on startup, and then a forward event happens for
-			// that htlc. For those htlcs, just resume.
+			// that htlc. For those htlcs, just resume (unendorsed).
 			_, ok := p.htlcs[event.incomingCircuitKey]
 			if ok {
-				if err := event.resume(true); err != nil {
+				err := event.resume(true, lrc.EndorsementNone)
+                                if err != nil {
 					return err
 				}
 
@@ -333,8 +335,8 @@ func (p *peerController) run(ctx context.Context) error {
 				continue
 			}
 
-			// Otherwise fail directly.
-			if err := event.resume(false); err != nil {
+			// Otherwise fail directly (unendorsed).
+			if err := event.resume(false, lrc.EndorsementNone); err != nil {
 				return err
 			}
 
@@ -472,7 +474,7 @@ func (p *peerController) forward(event interceptEvent) error {
 		outgoingMsat: event.outgoingMsat,
 	}
 
-	err := event.resume(true)
+	err := event.resume(true, lrc.EndorsementNone)
 	if err != nil {
 		return err
 	}
