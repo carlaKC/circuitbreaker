@@ -148,17 +148,35 @@ func (h *lndHtlcInterceptorClient) recv() (*interceptedEvent, error) {
 }
 
 type interceptResponse struct {
-	key    circuitKey
-	resume bool
+	key      circuitKey
+	resume   bool
+	endorsed lrc.Endorsement
 }
 
 func (h *lndHtlcInterceptorClient) send(resp *interceptResponse) error {
+	if !resp.resume && resp.endorsed != lrc.EndorsementNone {
+		return errors.New("can only set endorsed if HTLC is resumed")
+	}
 	response := &routerrpc.ForwardHtlcInterceptResponse{
 		IncomingCircuitKey: &routerrpc.CircuitKey{
 			ChanId: resp.key.channel,
 			HtlcId: resp.key.htlc,
 		},
 	}
+
+	// Only populate endorsement signal if instructed to.
+	switch resp.endorsed {
+	case lrc.EndorsementTrue:
+		response.UpdateAddCustomRecords = map[uint64][]byte{
+			uint64(lnwire.EndorsedHTLCExperimental): {0x1},
+		}
+
+	case lrc.EndorsementFalse:
+		response.UpdateAddCustomRecords = map[uint64][]byte{
+			uint64(lnwire.EndorsedHTLCExperimental): {0x0},
+		}
+	}
+
 	if resp.resume {
 		response.Action = routerrpc.ResolveHoldForwardAction_RESUME
 	} else {
