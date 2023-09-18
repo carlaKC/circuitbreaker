@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/carlakc/lrc"
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/lightningnetwork/lnd/routing/route"
 	migrate "github.com/rubenv/sql-migrate"
@@ -67,7 +68,9 @@ var migrations = &migrate.MemoryMigrationSource{
                                         outgoing_peer TEXT NOT NULL,
                                         outgoing_channel INTEGER NOT NULL,
                                         outgoing_htlc_index INTEGER NOT NULL,
-                                        
+                                        incoming_endorsed INTEGER NOT NULL,
+                                        outgoing_endorsed INTEGER NOT NULL,
+                                       
                                         CONSTRAINT unique_incoming_circuit UNIQUE (incoming_channel, incoming_htlc_index),
                                         CONSTRAINT unique_outgoing_circuit UNIQUE (outgoing_channel, outgoing_htlc_index)
                                 );`,
@@ -228,15 +231,17 @@ func (d *Db) GetLimits(ctx context.Context) (*Limits, error) {
 }
 
 type HtlcInfo struct {
-	addTime         time.Time
-	resolveTime     time.Time
-	settled         bool
-	incomingMsat    lnwire.MilliSatoshi
-	outgoingMsat    lnwire.MilliSatoshi
-	incomingPeer    route.Vertex
-	outgoingPeer    route.Vertex
-	incomingCircuit circuitKey
-	outgoingCircuit circuitKey
+	addTime          time.Time
+	resolveTime      time.Time
+	settled          bool
+	incomingMsat     lnwire.MilliSatoshi
+	outgoingMsat     lnwire.MilliSatoshi
+	incomingPeer     route.Vertex
+	outgoingPeer     route.Vertex
+	incomingCircuit  circuitKey
+	outgoingCircuit  circuitKey
+	incomingEndorsed lrc.Endorsement
+	outgoingEndorsed lrc.Endorsement
 }
 
 // RecordHtlcResolution records a HTLC that has been resolved and deletes the oldest rows from
@@ -263,10 +268,22 @@ func (d *Db) insertHtlcResolution(ctx context.Context, htlc *HtlcInfo) error {
                 incoming_htlc_index,
                 outgoing_peer,
                 outgoing_channel,
-                outgoing_htlc_index)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?);`
+                outgoing_htlc_index,
+                incoming_endorsed,
+                outgoing_endorsed)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?);`
 
-	_, err := d.db.ExecContext(
+	endorsedIn, err := serializeEndorsement(htlc.incomingEndorsed)
+	if err != nil {
+		return err
+	}
+
+	endorsedOut, err := serializeEndorsement(htlc.outgoingEndorsed)
+	if err != nil {
+		return err
+	}
+
+	_, err = d.db.ExecContext(
 		ctx, insert,
 		htlc.addTime.UnixNano(),
 		htlc.resolveTime.UnixNano(),
@@ -279,6 +296,8 @@ func (d *Db) insertHtlcResolution(ctx context.Context, htlc *HtlcInfo) error {
 		hex.EncodeToString(htlc.outgoingPeer[:]),
 		htlc.outgoingCircuit.channel,
 		htlc.outgoingCircuit.htlc,
+		endorsedIn,
+		endorsedOut,
 	)
 
 	return err
@@ -327,6 +346,33 @@ func (d *Db) limitHTLCRecords(ctx context.Context) error {
 	return err
 }
 
+func serializeEndorsement(endorsed lrc.Endorsement) (int, error) {
+	switch endorsed {
+	case lrc.EndorsementNone:
+		return -1, nil
+
+	case lrc.EndorsementFalse:
+		return 0, nil
+
+	case lrc.EndorsementTrue:
+		return 1, nil
+
+	default:
+		return 0, fmt.Errorf("unknown endorsement: %v", endorsed)
+	}
+}
+
+func deserializeEndorsement(endorsed int) lrc.Endorsement {
+	switch endorsed {
+	case 0:
+		return lrc.EndorsementFalse
+	case 1:
+		return lrc.EndorsementTrue
+	default:
+		return lrc.EndorsementNone
+	}
+}
+
 // ListForwardingHistory returns a list of htlcs that were resolved within the
 // time range provided (start time is inclusive, end time is exclusive)
 func (d *Db) ListForwardingHistory(ctx context.Context, start, end time.Time) (
@@ -343,7 +389,9 @@ func (d *Db) ListForwardingHistory(ctx context.Context, start, end time.Time) (
                 incoming_htlc_index,
                 outgoing_peer,
                 outgoing_channel,
-                outgoing_htlc_index
+                outgoing_htlc_index,
+                incoming_endorsed,
+                outgoing_endorsed
                 FROM forwarding_history
                 WHERE add_time >= ? AND add_time < ?;`
 
@@ -356,9 +404,10 @@ func (d *Db) ListForwardingHistory(ctx context.Context, start, end time.Time) (
 	var htlcs []*HtlcInfo
 	for rows.Next() {
 		var (
-			incomingPeer, outgoingPeer string
-			addTime, resolveTime       uint64
-			htlc                       HtlcInfo
+			incomingPeer, outgoingPeer         string
+			addTime, resolveTime               uint64
+			incomingEndorsed, outgoingEndorsed int
+			htlc                               HtlcInfo
 		)
 
 		err := rows.Scan(
@@ -373,6 +422,8 @@ func (d *Db) ListForwardingHistory(ctx context.Context, start, end time.Time) (
 			&outgoingPeer,
 			&htlc.outgoingCircuit.channel,
 			&htlc.outgoingCircuit.htlc,
+			&incomingEndorsed,
+			&outgoingEndorsed,
 		)
 		if err != nil {
 			return nil, err
@@ -389,6 +440,9 @@ func (d *Db) ListForwardingHistory(ctx context.Context, start, end time.Time) (
 		if err != nil {
 			return nil, err
 		}
+
+		htlc.incomingEndorsed = deserializeEndorsement(incomingEndorsed)
+		htlc.outgoingEndorsed = deserializeEndorsement(outgoingEndorsed)
 
 		htlcs = append(htlcs, &htlc)
 	}
