@@ -493,3 +493,64 @@ func (d *Db) InsertRejectedHTLC(ctx context.Context, htlc *interceptedEvent,
 
 	return err
 }
+
+type rejectedHTLC struct {
+	rejectTime       time.Time
+	incomingCircuit  circuitKey
+	outgoingChannel  uint64
+	incomingAmount   lnwire.MilliSatoshi
+	outgoingAmount   lnwire.MilliSatoshi
+	cltvDelta        uint32
+	incomingEndorsed lrc.Endorsement
+}
+
+func (d *Db) ListRejectedHTLCs(ctx context.Context, start, end time.Time) (
+	[]*rejectedHTLC, error) {
+
+	list := `SELECT
+        reject_time_ns,
+        incoming_channel,
+        incoming_index,
+        outgoing_channel,
+        incoming_msat,
+        outgoing_msat,
+        cltv_delta,
+        incoming_endorsed
+        FROM rejected_htlcs
+        WHERE reject_time_ns >= ? AND reject_time_ns < ?;`
+
+	rows, err := d.db.QueryContext(ctx, list, start.UnixNano(), end.UnixNano())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var htlcs []*rejectedHTLC
+	for rows.Next() {
+		var (
+			rejectTime uint64
+			endorsed   int
+			htlc       = &rejectedHTLC{}
+		)
+
+		err := rows.Scan(
+			&rejectTime,
+			&htlc.incomingCircuit.channel,
+			&htlc.incomingCircuit.htlc,
+			&htlc.outgoingChannel,
+			&htlc.incomingAmount,
+			&htlc.outgoingAmount,
+			&htlc.cltvDelta,
+			&endorsed,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		htlc.rejectTime = time.Unix(0, int64(rejectTime))
+		htlc.incomingEndorsed = deserializeEndorsement(endorsed)
+		htlcs = append(htlcs, htlc)
+	}
+
+	return htlcs, nil
+}
