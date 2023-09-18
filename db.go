@@ -77,6 +77,22 @@ var migrations = &migrate.MemoryMigrationSource{
 				`CREATE INDEX add_time_index ON forwarding_history (add_time);`,
 			},
 		},
+		{
+			Id: "4",
+			Up: []string{
+				`CREATE TABLE IF NOT EXISTS rejected_htlcs (
+                                        id INTEGER PRIMARY KEY NOT NULL,
+                                        reject_time_ns TIMESTAMP NOT NULL,
+                                        incoming_channel INTEGER NOT NULL,
+                                        incoming_index INTEGER NOT NULL,
+                                        outgoing_channel INTEGER NOT NULL,
+                                        incoming_msat INTEGER NOT NULL,
+                                        outgoing_msat INTEGER NOT NULL,
+                                        cltv_delta INTEGER NOT NULL,
+                                        incoming_endorsed BOOLEAN NOT NULL
+                                );`,
+			},
+		},
 	},
 }
 
@@ -448,4 +464,32 @@ func (d *Db) ListForwardingHistory(ctx context.Context, start, end time.Time) (
 	}
 
 	return htlcs, nil
+}
+
+// InsertRejectedHTLC stores a htlc that circuitbreaker would not forward.
+func (d *Db) InsertRejectedHTLC(ctx context.Context, htlc *interceptedEvent,
+	ts time.Time) error {
+
+	query := `INSERT INTO rejected_htlcs (
+                reject_time_ns,
+                incoming_channel,
+                incoming_index,
+                outgoing_channel,
+                incoming_msat,
+                outgoing_msat,
+                cltv_delta,
+                incoming_endorsed
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);`
+
+	endorsedIn, err := serializeEndorsement(htlc.endorsed)
+	if err != nil {
+		return err
+	}
+
+	_, err = d.db.ExecContext(ctx, query, ts.UnixNano(),
+		htlc.incomingCircuitKey.channel, htlc.incomingCircuitKey.htlc,
+		htlc.outgoingChannel, htlc.incomingMsat, htlc.outgoingMsat,
+		htlc.cltvDelta, endorsedIn)
+
+	return err
 }
