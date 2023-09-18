@@ -46,6 +46,12 @@ service Service {
             get:"/forwarding_history"
         };
     }
+
+    rpc ListRejectedHtlcs (ListRejectedHtlcsRequest) returns (ListRejectedHtlcsResponse) {
+        option (google.api.http) = {
+            get:"/rejected_htlcs"
+        };
+    }
 }
 
 message GetInfoRequest {}
@@ -150,4 +156,28 @@ message Forward {
     CircuitKey outgoing_circuit = 9;
     int32 incoming_endorsed = 10;
     int32 outgoing_endorsed = 11;
+}
+
+message ListRejectedHtlcsRequest {
+    // The inclusive start time for the query, used to filter HTLCs by the time they were rejected.
+    // If this value is zero, it will be treated as the unix epoch.
+    int64 reject_start_time_ns = 1;
+
+    // The exclusive end time for the query, used to filter HTLCs by the time they were rejected.
+    // If this value is zero, it will be assumed to be the current time.
+    int64 reject_end_time_ns = 2; 
+}
+
+message ListRejectedHtlcsResponse {
+    repeated RejectedHTLC htlcs = 1;
+}
+
+message RejectedHTLC {
+  uint64 reject_time = 1;
+  CircuitKey incoming_circuit = 2;
+  uint64 outgoing_channel = 3;
+  uint64 incoming_amount = 4;
+  uint64 outgoing_amount = 5;
+  uint32 cltv_delta = 6;
+  int32 incoming_endorsed = 7;
 }

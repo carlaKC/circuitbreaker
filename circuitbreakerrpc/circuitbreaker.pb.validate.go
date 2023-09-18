@@ -1325,3 +1325,243 @@ var _ interface {
 	Cause() error
 	ErrorName() string
 } = ForwardValidationError{}
+
+// Validate checks the field values on ListRejectedHtlcsRequest with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *ListRejectedHtlcsRequest) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for RejectStartTimeNs
+
+	// no validation rules for RejectEndTimeNs
+
+	return nil
+}
+
+// ListRejectedHtlcsRequestValidationError is the validation error returned by
+// ListRejectedHtlcsRequest.Validate if the designated constraints aren't met.
+type ListRejectedHtlcsRequestValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e ListRejectedHtlcsRequestValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e ListRejectedHtlcsRequestValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e ListRejectedHtlcsRequestValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e ListRejectedHtlcsRequestValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e ListRejectedHtlcsRequestValidationError) ErrorName() string {
+	return "ListRejectedHtlcsRequestValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e ListRejectedHtlcsRequestValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sListRejectedHtlcsRequest.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = ListRejectedHtlcsRequestValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = ListRejectedHtlcsRequestValidationError{}
+
+// Validate checks the field values on ListRejectedHtlcsResponse with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *ListRejectedHtlcsResponse) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	for idx, item := range m.GetHtlcs() {
+		_, _ = idx, item
+
+		if v, ok := interface{}(item).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return ListRejectedHtlcsResponseValidationError{
+					field:  fmt.Sprintf("Htlcs[%v]", idx),
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	}
+
+	return nil
+}
+
+// ListRejectedHtlcsResponseValidationError is the validation error returned by
+// ListRejectedHtlcsResponse.Validate if the designated constraints aren't met.
+type ListRejectedHtlcsResponseValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e ListRejectedHtlcsResponseValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e ListRejectedHtlcsResponseValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e ListRejectedHtlcsResponseValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e ListRejectedHtlcsResponseValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e ListRejectedHtlcsResponseValidationError) ErrorName() string {
+	return "ListRejectedHtlcsResponseValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e ListRejectedHtlcsResponseValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sListRejectedHtlcsResponse.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = ListRejectedHtlcsResponseValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = ListRejectedHtlcsResponseValidationError{}
+
+// Validate checks the field values on RejectedHTLC with the rules defined in
+// the proto definition for this message. If any rules are violated, an error
+// is returned.
+func (m *RejectedHTLC) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for RejectTime
+
+	if v, ok := interface{}(m.GetIncomingCircuit()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return RejectedHTLCValidationError{
+				field:  "IncomingCircuit",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	// no validation rules for OutgoingChannel
+
+	// no validation rules for IncomingAmount
+
+	// no validation rules for OutgoingAmount
+
+	// no validation rules for CltvDelta
+
+	// no validation rules for IncomingEndorsed
+
+	return nil
+}
+
+// RejectedHTLCValidationError is the validation error returned by
+// RejectedHTLC.Validate if the designated constraints aren't met.
+type RejectedHTLCValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e RejectedHTLCValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e RejectedHTLCValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e RejectedHTLCValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e RejectedHTLCValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e RejectedHTLCValidationError) ErrorName() string { return "RejectedHTLCValidationError" }
+
+// Error satisfies the builtin error interface
+func (e RejectedHTLCValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sRejectedHTLC.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = RejectedHTLCValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = RejectedHTLCValidationError{}

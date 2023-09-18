@@ -313,27 +313,35 @@ func (s *server) ListLimits(ctx context.Context,
 	}, nil
 }
 
-func (s *server) ListForwardingHistory(ctx context.Context,
-	req *circuitbreakerrpc.ListForwardingHistoryRequest) (
-	*circuitbreakerrpc.ListForwardingHistoryResponse, error) {
-
+func parseTimeRange(start, end int64) (time.Time, time.Time, error) {
 	var (
 		// By default query from the epoch until now.
 		startTime = time.Time{}
 		endTime   = time.Now()
 	)
 
-	if req.AddStartTimeNs != 0 {
-		startTime = time.Unix(0, req.AddStartTimeNs)
+	if start != 0 {
+		startTime = time.Unix(0, start)
 	}
 
-	if req.AddEndTimeNs != 0 {
-		endTime = time.Unix(0, req.AddEndTimeNs)
+	if end != 0 {
+		endTime = time.Unix(0, end)
 	}
 
 	if startTime.After(endTime) {
-		return nil, fmt.Errorf("start time: %v after end time: %v", startTime,
-			endTime)
+		return time.Time{}, time.Time{}, fmt.Errorf("start time: %v after "+
+			"end time: %v", startTime, endTime)
+	}
+
+	return startTime, endTime, nil
+}
+func (s *server) ListForwardingHistory(ctx context.Context,
+	req *circuitbreakerrpc.ListForwardingHistoryRequest) (
+	*circuitbreakerrpc.ListForwardingHistoryResponse, error) {
+
+	startTime, endTime, err := parseTimeRange(req.AddStartTimeNs, req.AddEndTimeNs)
+	if err != nil {
+		return nil, err
 	}
 
 	htlcs, err := s.db.ListForwardingHistory(ctx, startTime, endTime)
@@ -384,4 +392,59 @@ func (s *server) marshalFwdHistory(htlcs []*HtlcInfo) []*circuitbreakerrpc.Forwa
 	}
 
 	return rpcHtlcs
+}
+
+func (s *server) ListRejectedHtlcs(ctx context.Context,
+	req *circuitbreakerrpc.ListRejectedHtlcsRequest) (*circuitbreakerrpc.ListRejectedHtlcsResponse, error) {
+
+	startTime, endTime, err := parseTimeRange(
+		req.RejectStartTimeNs, req.RejectEndTimeNs,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	htlcs, err := s.db.ListRejectedHTLCs(ctx, startTime, endTime)
+	if err != nil {
+		return nil, err
+	}
+
+	rpcHtlcs, err := marshalRejectedHtlcs(htlcs)
+	if err != nil {
+		return nil, err
+	}
+
+	return &circuitbreakerrpc.ListRejectedHtlcsResponse{
+		Htlcs: rpcHtlcs,
+	}, nil
+}
+
+func marshalRejectedHtlcs(htlcs []*rejectedHTLC) ([]*circuitbreakerrpc.RejectedHTLC,
+	error) {
+
+	rpcHtlcs := make([]*circuitbreakerrpc.RejectedHTLC, len(htlcs))
+
+	for i, htlc := range htlcs {
+		endorsedIn, err := serializeEndorsement(htlc.incomingEndorsed)
+		if err != nil {
+			return nil, err
+		}
+
+		forward := &circuitbreakerrpc.RejectedHTLC{
+			RejectTime: uint64(htlc.rejectTime.UnixNano()),
+			IncomingCircuit: &circuitbreakerrpc.CircuitKey{
+				ShortChannelId: htlc.incomingCircuit.channel,
+				HtlcIndex:      uint32(htlc.incomingCircuit.htlc),
+			},
+			OutgoingChannel:  htlc.outgoingChannel,
+			IncomingAmount:   uint64(htlc.incomingAmount),
+			OutgoingAmount:   uint64(htlc.outgoingAmount),
+			CltvDelta:        htlc.cltvDelta,
+			IncomingEndorsed: int32(endorsedIn),
+		}
+
+		rpcHtlcs[i] = forward
+	}
+
+	return rpcHtlcs, nil
 }
