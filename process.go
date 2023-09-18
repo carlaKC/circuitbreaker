@@ -518,11 +518,25 @@ func (p *process) processInterceptor(ctx context.Context,
 		key := event.incomingCircuitKey
 
 		resume := func(resume bool, endorsed lrc.Endorsement) error {
-			return interceptor.send(&interceptResponse{
+			// If we're not resuming the HTLC, we want to store that we
+			// rejected it. However, we don't want to *not* settle it back
+			// if the db write fails, so we just track the error, fail it
+			// back and _then_ return any write errors that occur.
+			var storeErr error
+			if !resume {
+				storeErr = p.db.InsertRejectedHTLC(
+					ctx, event, time.Now(),
+				)
+			}
+			if err := interceptor.send(&interceptResponse{
 				key:      key,
 				resume:   resume,
 				endorsed: endorsed,
-			})
+			}); err != nil {
+				return err
+			}
+
+			return storeErr
 		}
 
 		select {
