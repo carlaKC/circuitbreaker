@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/carlakc/lrc"
+	"github.com/lightningnetwork/lnd/lntypes"
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/lightningnetwork/lnd/routing/route"
 	migrate "github.com/rubenv/sql-migrate"
@@ -57,6 +58,7 @@ var migrations = &migrate.MemoryMigrationSource{
 			Id: "3",
 			Up: []string{
 				`CREATE TABLE IF NOT EXISTS forwarding_history (
+                                        payment_hash TEXT NOT NULL,
                                         add_time TIMESTAMP NOT NULL,
                                         resolved_time TIMESTAMP NOT NULL,
                                         settled BOOLEAN NOT NULL,
@@ -247,6 +249,7 @@ func (d *Db) GetLimits(ctx context.Context) (*Limits, error) {
 }
 
 type HtlcInfo struct {
+	paymentHash      lntypes.Hash
 	addTime          time.Time
 	resolveTime      time.Time
 	settled          bool
@@ -274,6 +277,7 @@ func (d *Db) RecordHtlcResolution(ctx context.Context,
 
 func (d *Db) insertHtlcResolution(ctx context.Context, htlc *HtlcInfo) error {
 	insert := `INSERT INTO forwarding_history (
+                payment_hash,
                 add_time,
                 resolved_time,
                 settled,
@@ -287,7 +291,7 @@ func (d *Db) insertHtlcResolution(ctx context.Context, htlc *HtlcInfo) error {
                 outgoing_htlc_index,
                 incoming_endorsed,
                 outgoing_endorsed)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?);`
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?);`
 
 	endorsedIn, err := serializeEndorsement(htlc.incomingEndorsed)
 	if err != nil {
@@ -301,6 +305,7 @@ func (d *Db) insertHtlcResolution(ctx context.Context, htlc *HtlcInfo) error {
 
 	_, err = d.db.ExecContext(
 		ctx, insert,
+		htlc.paymentHash.String(),
 		htlc.addTime.UnixNano(),
 		htlc.resolveTime.UnixNano(),
 		htlc.settled,
@@ -395,6 +400,7 @@ func (d *Db) ListForwardingHistory(ctx context.Context, start, end time.Time) (
 	[]*HtlcInfo, error) {
 
 	list := `SELECT 
+                payment_hash,
                 add_time,
                 resolved_time,
                 settled,
@@ -420,13 +426,14 @@ func (d *Db) ListForwardingHistory(ctx context.Context, start, end time.Time) (
 	var htlcs []*HtlcInfo
 	for rows.Next() {
 		var (
-			incomingPeer, outgoingPeer         string
-			addTime, resolveTime               uint64
-			incomingEndorsed, outgoingEndorsed int
-			htlc                               HtlcInfo
+			incomingPeer, outgoingPeer, paymentHash string
+			addTime, resolveTime                    uint64
+			incomingEndorsed, outgoingEndorsed      int
+			htlc                                    HtlcInfo
 		)
 
 		err := rows.Scan(
+			&paymentHash,
 			&addTime,
 			&resolveTime,
 			&htlc.settled,
@@ -444,6 +451,12 @@ func (d *Db) ListForwardingHistory(ctx context.Context, start, end time.Time) (
 		if err != nil {
 			return nil, err
 		}
+
+		htlc.paymentHash, err = lntypes.MakeHashFromStr(paymentHash)
+		if err != nil {
+			return nil, err
+		}
+
 		htlc.addTime = time.Unix(0, int64(addTime))
 		htlc.resolveTime = time.Unix(0, int64(resolveTime))
 

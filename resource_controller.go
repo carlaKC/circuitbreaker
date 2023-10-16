@@ -100,7 +100,14 @@ func (r *resourceController) process(ctx context.Context, event peerInterceptEve
 
 func (r *resourceController) resolved(ctx context.Context, key peerResolvedEvent) error {
 	inFlight := r.ResolveHTLC(resolvedHTLCFromIntercepted(key))
+	paymentHash, ok := r.paymentHashes[key.incomingCircuitKey]
+	if !ok {
+		return fmt.Errorf("could not find payment hash for: %v",
+			key.incomingCircuitKey)
+	}
+
 	htlc := &HtlcInfo{
+		paymentHash:      paymentHash,
 		addTime:          key.timestamp,
 		resolveTime:      time.Now(),
 		settled:          key.settled,

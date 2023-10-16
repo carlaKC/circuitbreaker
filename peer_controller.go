@@ -443,6 +443,7 @@ func (p *peerController) markHtlcComplete(ctx context.Context, key circuitKey,
 
 	// Track available HTLC information and report to handler.
 	htlcInfo := &HtlcInfo{
+		paymentHash:     inFlight.paymentHash,
 		addTime:         inFlight.addedTs,
 		resolveTime:     resolution.timestamp,
 		settled:         resolution.settled,
@@ -475,7 +476,7 @@ func getRate(maxHourlyRate int64) rate.Limit {
 
 func (p *peerController) forward(event interceptEvent) error {
 	p.htlcs[event.incomingCircuitKey] = &inFlightHtlc{
-                paymentHash: event.paymentHash,
+		paymentHash:  event.paymentHash,
 		addedTs:      p.now(),
 		incomingMsat: event.incomingMsat,
 		outgoingMsat: event.outgoingMsat,
