@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/carlakc/lrc"
+	"github.com/lightningnetwork/lnd/lntypes"
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/lightningnetwork/lnd/routing/route"
 	"go.uber.org/zap"
@@ -41,6 +42,7 @@ type circuitKey struct {
 }
 
 type interceptEvent struct {
+	paymentHash        lntypes.Hash
 	incomingCircuitKey circuitKey
 	outgoingChannel    uint64
 	incomingMsat       lnwire.MilliSatoshi
@@ -541,6 +543,7 @@ func (p *process) processInterceptor(ctx context.Context,
 
 		select {
 		case p.interceptChan <- interceptEvent{
+			paymentHash:        event.paymentHash,
 			incomingCircuitKey: key,
 			outgoingChannel:    event.outgoingChannel,
 			incomingMsat:       event.incomingMsat,
