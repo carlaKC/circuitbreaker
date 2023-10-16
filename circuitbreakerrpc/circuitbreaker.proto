@@ -156,6 +156,7 @@ message Forward {
     CircuitKey outgoing_circuit = 9;
     int32 incoming_endorsed = 10;
     int32 outgoing_endorsed = 11;
+    string payment_hash = 12;
 }
 
 message ListRejectedHtlcsRequest {

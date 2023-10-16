@@ -386,6 +386,9 @@ func (s *server) marshalFwdHistory(htlcs []*HtlcInfo) []*circuitbreakerrpc.Forwa
 			},
 			IncomingEndorsed: int32(endorsedIn),
 			OutgoingEndorsed: int32(endorsedOut),
+			PaymentHash: hex.EncodeToString(
+				htlc.paymentHash[:],
+			),
 		}
 
 		rpcHtlcs[i] = forward

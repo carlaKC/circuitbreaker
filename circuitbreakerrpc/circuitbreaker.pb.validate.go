@@ -1269,6 +1269,8 @@ func (m *Forward) Validate() error {
 
 	// no validation rules for OutgoingEndorsed
 
+	// no validation rules for PaymentHash
+
 	return nil
 }
 
