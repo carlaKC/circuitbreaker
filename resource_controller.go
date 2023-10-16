@@ -7,6 +7,7 @@ import (
 
 	"github.com/carlakc/lrc"
 	"github.com/lightningnetwork/lnd/clock"
+	"github.com/lightningnetwork/lnd/lntypes"
 	"github.com/lightningnetwork/lnd/lnwire"
 )
 
@@ -20,6 +21,11 @@ type resourceController struct {
 	logOnly      bool
 	htlcComplete func(context.Context, *HtlcInfo) error
 	lrc.LocalResourceManager
+
+	// Track payment hash by incoming circuit key.
+	// Note: this is a bit of a hacky workaround required to surface the
+	// payment hash of our forwarded payments for analysis.
+	paymentHashes map[circuitKey]lntypes.Hash
 }
 
 // newResourceController creates a new resource controller, using default values.
@@ -41,9 +47,10 @@ func newResourceController(logOnly bool, htlcComplete func(context.Context,
 	)
 
 	return &resourceController{
-		logOnly,
-		htlcComplete,
-		manager,
+		logOnly:              logOnly,
+		htlcComplete:         htlcComplete,
+		LocalResourceManager: manager,
+		paymentHashes:        make(map[circuitKey]lntypes.Hash),
 	}
 }
 
@@ -62,6 +69,9 @@ func (r *resourceController) process(ctx context.Context, event peerInterceptEve
 
 	log.Infof("Resource Controller - %v: %v", action, event.interceptEvent)
 
+	// Add hash to list of in-flight HTLCs.
+	r.paymentHashes[event.incomingCircuitKey] = event.paymentHash
+
 	switch action {
 	case lrc.ForwardOutcomeEndorsed:
 		event.resume(true, lrc.EndorsementTrue)
@@ -70,6 +80,15 @@ func (r *resourceController) process(ctx context.Context, event peerInterceptEve
 		event.resume(true, lrc.EndorsementFalse)
 
 	case lrc.ForwardOutcomeNoResources:
+		// If we're going to drop the HTLC, we don't need to keep its
+		// payment hash around.
+		//
+		// Note: we wastefully add and remove here, should refactor
+		// this switch.
+		if !r.logOnly {
+			delete(r.paymentHashes, event.incomingCircuitKey)
+		}
+
 		event.resume(!r.logOnly, lrc.EndorsementFalse)
 
 	default:
