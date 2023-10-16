@@ -434,6 +434,9 @@ func marshalRejectedHtlcs(htlcs []*rejectedHTLC) ([]*circuitbreakerrpc.RejectedH
 		}
 
 		forward := &circuitbreakerrpc.RejectedHTLC{
+                        PaymentHash: hex.EncodeToString(
+                                htlc.paymentHash[:],
+                        ),
 			RejectTime: uint64(htlc.rejectTime.UnixNano()),
 			IncomingCircuit: &circuitbreakerrpc.CircuitKey{
 				ShortChannelId: htlc.incomingCircuit.channel,

@@ -181,4 +181,5 @@ message RejectedHTLC {
   uint64 outgoing_amount = 5;
   uint32 cltv_delta = 6;
   int32 incoming_endorsed = 7;
+  string payment_hash = 8;
 }

@@ -1511,6 +1511,8 @@ func (m *RejectedHTLC) Validate() error {
 
 	// no validation rules for IncomingEndorsed
 
+	// no validation rules for PaymentHash
+
 	return nil
 }
 
