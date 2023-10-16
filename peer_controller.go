@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/carlakc/lrc"
+	"github.com/lightningnetwork/lnd/lntypes"
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/lightningnetwork/lnd/routing/route"
 	"github.com/paulbellamy/ratecounter"
@@ -79,6 +80,7 @@ type peerController struct {
 }
 
 type inFlightHtlc struct {
+	paymentHash  lntypes.Hash
 	addedTs      time.Time
 	incomingMsat lnwire.MilliSatoshi
 	outgoingMsat lnwire.MilliSatoshi
@@ -291,7 +293,7 @@ func (p *peerController) run(ctx context.Context) error {
 			_, ok := p.htlcs[event.incomingCircuitKey]
 			if ok {
 				err := event.resume(true, lrc.EndorsementNone)
-                                if err != nil {
+				if err != nil {
 					return err
 				}
 
@@ -473,6 +475,7 @@ func getRate(maxHourlyRate int64) rate.Limit {
 
 func (p *peerController) forward(event interceptEvent) error {
 	p.htlcs[event.incomingCircuitKey] = &inFlightHtlc{
+                paymentHash: event.paymentHash,
 		addedTs:      p.now(),
 		incomingMsat: event.incomingMsat,
 		outgoingMsat: event.outgoingMsat,
