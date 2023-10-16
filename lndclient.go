@@ -10,6 +10,7 @@ import (
 	"github.com/carlakc/lrc"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
+	"github.com/lightningnetwork/lnd/lntypes"
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/lightningnetwork/lnd/macaroons"
 	"github.com/lightningnetwork/lnd/routing/route"
@@ -108,6 +109,7 @@ type lndHtlcInterceptorClient struct {
 type endorsedSignal uint8
 
 type interceptedEvent struct {
+	paymentHash        lntypes.Hash
 	incomingCircuitKey circuitKey
 	outgoingChannel    uint64
 	incomingMsat       lnwire.MilliSatoshi
@@ -134,7 +136,13 @@ func (h *lndHtlcInterceptorClient) recv() (*interceptedEvent, error) {
 		}
 	}
 
+	hash, err := lntypes.MakeHash(event.PaymentHash)
+	if err != nil {
+		return nil, err
+	}
+
 	return &interceptedEvent{
+		paymentHash: hash,
 		incomingCircuitKey: circuitKey{
 			channel: event.IncomingCircuitKey.ChanId,
 			htlc:    event.IncomingCircuitKey.HtlcId,
