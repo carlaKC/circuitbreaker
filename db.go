@@ -84,6 +84,7 @@ var migrations = &migrate.MemoryMigrationSource{
 			Up: []string{
 				`CREATE TABLE IF NOT EXISTS rejected_htlcs (
                                         id INTEGER PRIMARY KEY NOT NULL,
+                                        payment_hash TEXT NOT NULL,
                                         reject_time_ns TIMESTAMP NOT NULL,
                                         incoming_channel INTEGER NOT NULL,
                                         incoming_index INTEGER NOT NULL,
@@ -484,6 +485,7 @@ func (d *Db) InsertRejectedHTLC(ctx context.Context, htlc *interceptedEvent,
 	ts time.Time) error {
 
 	query := `INSERT INTO rejected_htlcs (
+                payment_hash,
                 reject_time_ns,
                 incoming_channel,
                 incoming_index,
@@ -492,14 +494,15 @@ func (d *Db) InsertRejectedHTLC(ctx context.Context, htlc *interceptedEvent,
                 outgoing_msat,
                 cltv_delta,
                 incoming_endorsed
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);`
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`
 
 	endorsedIn, err := serializeEndorsement(htlc.endorsed)
 	if err != nil {
 		return err
 	}
 
-	_, err = d.db.ExecContext(ctx, query, ts.UnixNano(),
+	_, err = d.db.ExecContext(ctx, query,
+		htlc.paymentHash.String(), ts.UnixNano(),
 		htlc.incomingCircuitKey.channel, htlc.incomingCircuitKey.htlc,
 		htlc.outgoingChannel, htlc.incomingMsat, htlc.outgoingMsat,
 		htlc.cltvDelta, endorsedIn)
@@ -508,6 +511,7 @@ func (d *Db) InsertRejectedHTLC(ctx context.Context, htlc *interceptedEvent,
 }
 
 type rejectedHTLC struct {
+	paymentHash      lntypes.Hash
 	rejectTime       time.Time
 	incomingCircuit  circuitKey
 	outgoingChannel  uint64
@@ -521,6 +525,7 @@ func (d *Db) ListRejectedHTLCs(ctx context.Context, start, end time.Time) (
 	[]*rejectedHTLC, error) {
 
 	list := `SELECT
+        payment_hash,
         reject_time_ns,
         incoming_channel,
         incoming_index,
@@ -541,12 +546,14 @@ func (d *Db) ListRejectedHTLCs(ctx context.Context, start, end time.Time) (
 	var htlcs []*rejectedHTLC
 	for rows.Next() {
 		var (
-			rejectTime uint64
-			endorsed   int
-			htlc       = &rejectedHTLC{}
+			paymentHash string
+			rejectTime  uint64
+			endorsed    int
+			htlc        = &rejectedHTLC{}
 		)
 
 		err := rows.Scan(
+			&paymentHash,
 			&rejectTime,
 			&htlc.incomingCircuit.channel,
 			&htlc.incomingCircuit.htlc,
@@ -556,6 +563,11 @@ func (d *Db) ListRejectedHTLCs(ctx context.Context, start, end time.Time) (
 			&htlc.cltvDelta,
 			&endorsed,
 		)
+		if err != nil {
+			return nil, err
+		}
+
+		htlc.paymentHash, err = lntypes.MakeHashFromStr(paymentHash)
 		if err != nil {
 			return nil, err
 		}
