@@ -1265,6 +1265,10 @@ func (m *Forward) Validate() error {
 		}
 	}
 
+	// no validation rules for IncomingEndorsed
+
+	// no validation rules for OutgoingEndorsed
+
 	return nil
 }
 

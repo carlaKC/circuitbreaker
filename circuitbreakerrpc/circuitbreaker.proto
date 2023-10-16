@@ -148,4 +148,6 @@ message Forward {
     CircuitKey incoming_circuit = 7;
     string outgoing_peer = 8;
     CircuitKey outgoing_circuit = 9;
+    int32 incoming_endorsed = 10;
+    int32 outgoing_endorsed = 11;
 }

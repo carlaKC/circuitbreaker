@@ -350,6 +350,16 @@ func (s *server) marshalFwdHistory(htlcs []*HtlcInfo) []*circuitbreakerrpc.Forwa
 	rpcHtlcs := make([]*circuitbreakerrpc.Forward, len(htlcs))
 
 	for i, htlc := range htlcs {
+		endorsedIn, err := serializeEndorsement(htlc.incomingEndorsed)
+		if err != nil {
+			return nil
+		}
+
+		endorsedOut, err := serializeEndorsement(htlc.outgoingEndorsed)
+		if err != nil {
+			return nil
+		}
+
 		forward := &circuitbreakerrpc.Forward{
 			AddTimeNs:      uint64(htlc.addTime.UnixNano()),
 			ResolveTimeNs:  uint64(htlc.resolveTime.UnixNano()),
@@ -366,6 +376,8 @@ func (s *server) marshalFwdHistory(htlcs []*HtlcInfo) []*circuitbreakerrpc.Forwa
 				ShortChannelId: htlc.outgoingCircuit.channel,
 				HtlcIndex:      uint32(htlc.outgoingCircuit.htlc),
 			},
+			IncomingEndorsed: int32(endorsedIn),
+			OutgoingEndorsed: int32(endorsedOut),
 		}
 
 		rpcHtlcs[i] = forward
