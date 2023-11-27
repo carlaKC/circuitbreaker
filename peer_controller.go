@@ -88,7 +88,7 @@ type peerInterceptEvent struct {
 
 type peerResolvedEvent struct {
 	resolvedEvent
-	outgoingPeer route.Vertex
+	outgoingPeer *route.Vertex
 }
 
 type peerState struct {
@@ -433,6 +433,18 @@ func (p *peerController) markHtlcComplete(ctx context.Context, key circuitKey,
 		return
 	}
 
+	// If we couldn't look up an outgoing peer for the HTLC, either:
+	// 1. The outgoing channel never existed (since this is not validated on intercept)
+	// 2. The outgoing channel is pending close at time of resolution (edge case)
+	//
+	// Log and skip this HTLC for now to avoid adding empty values to the DB.
+	if resolution.outgoingPeer == nil {
+		log.Debugf("HTLC: %v has no known outgoing peer, not storing resolution",
+			key)
+
+		return
+	}
+
 	// Track available HTLC information and report to handler.
 	htlcInfo := &HtlcInfo{
 		addTime:         inFlight.addedTs,
@@ -443,7 +455,7 @@ func (p *peerController) markHtlcComplete(ctx context.Context, key circuitKey,
 		incomingCircuit: key,
 		outgoingCircuit: resolution.outgoingCircuitKey,
 		incomingPeer:    p.pubKey,
-		outgoingPeer:    resolution.outgoingPeer,
+		outgoingPeer:    *resolution.outgoingPeer,
 	}
 
 	if err := p.htlcCompleted(ctx, htlcInfo); err != nil {
