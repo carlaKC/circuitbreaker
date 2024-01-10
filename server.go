@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/carlakc/lrc"
 	"github.com/lightningequipment/circuitbreaker/circuitbreakerrpc"
 	"github.com/lightningnetwork/lnd/routing/route"
 	"go.uber.org/zap"
@@ -366,6 +367,15 @@ func (s *server) marshalFwdHistory(htlcs []*HtlcInfo) []*circuitbreakerrpc.Forwa
 				ShortChannelId: htlc.outgoingCircuit.channel,
 				HtlcIndex:      uint32(htlc.outgoingCircuit.htlc),
 			},
+			CltvDelta: htlc.cltvDelta,
+		}
+
+		if htlc.incomingEndorsed == lrc.EndorsementTrue {
+			forward.IncomingEndorsed = true
+		}
+
+		if htlc.outgoingEndorsed == lrc.EndorsementTrue {
+			forward.OutgoingEndorsed = true
 		}
 
 		rpcHtlcs[i] = forward

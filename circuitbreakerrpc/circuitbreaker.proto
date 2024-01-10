@@ -148,4 +148,7 @@ message Forward {
     CircuitKey incoming_circuit = 7;
     string outgoing_peer = 8;
     CircuitKey outgoing_circuit = 9;
+    bool incoming_endorsed = 10;
+    bool outgoing_endorsed = 11;
+    uint32 cltv_delta = 12;
 }
