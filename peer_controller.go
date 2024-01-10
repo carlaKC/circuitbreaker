@@ -457,6 +457,8 @@ func (p *peerController) markHtlcComplete(ctx context.Context, key circuitKey,
 		outgoingCircuit: resolution.outgoingCircuitKey,
 		incomingPeer:    p.pubKey,
 		outgoingPeer:    *resolution.outgoingPeer,
+		// Note: htlc endorsement and cltv are left out because we're
+		// not going to run in this mode.
 	}
 
 	if err := p.htlcCompleted(ctx, htlcInfo); err != nil {

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/carlakc/lrc"
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/lightningnetwork/lnd/routing/route"
 	migrate "github.com/rubenv/sql-migrate"
@@ -61,13 +62,16 @@ var migrations = &migrate.MemoryMigrationSource{
                                         settled BOOLEAN NOT NULL,
                                         incoming_amt_msat INTEGER NOT NULL CHECK (incoming_amt_msat > 0),
                                         outgoing_amt_msat INTEGER NOT NULL CHECK (outgoing_amt_msat > 0),
-                                        incoming_peer TEXT NOT NULL,
+                                        incoming_peer TEXT,
                                         incoming_channel INTEGER NOT NULL,
                                         incoming_htlc_index INTEGER NOT NULL,
-                                        outgoing_peer TEXT NOT NULL,
+                                        outgoing_peer TEXT,
                                         outgoing_channel INTEGER NOT NULL,
                                         outgoing_htlc_index INTEGER NOT NULL,
-                                        
+                                        incoming_endorsed INTEGER,
+                                        outgoing_endorsed INTEGER, 
+                                        cltv_delta INTEGER NOT NULL,
+
                                         CONSTRAINT unique_incoming_circuit UNIQUE (incoming_channel, incoming_htlc_index),
                                         CONSTRAINT unique_outgoing_circuit UNIQUE (outgoing_channel, outgoing_htlc_index)
                                 );`,
@@ -231,15 +235,18 @@ func (d *Db) GetLimits(ctx context.Context) (*Limits, error) {
 }
 
 type HtlcInfo struct {
-	addTime         time.Time
-	resolveTime     time.Time
-	settled         bool
-	incomingMsat    lnwire.MilliSatoshi
-	outgoingMsat    lnwire.MilliSatoshi
-	incomingPeer    route.Vertex
-	outgoingPeer    route.Vertex
-	incomingCircuit circuitKey
-	outgoingCircuit circuitKey
+	addTime          time.Time
+	resolveTime      time.Time
+	settled          bool
+	incomingMsat     lnwire.MilliSatoshi
+	outgoingMsat     lnwire.MilliSatoshi
+	incomingPeer     route.Vertex
+	outgoingPeer     route.Vertex
+	incomingCircuit  circuitKey
+	outgoingCircuit  circuitKey
+	incomingEndorsed lrc.Endorsement
+	outgoingEndorsed lrc.Endorsement
+	cltvDelta        uint32
 }
 
 // RecordHtlcResolution records a HTLC that has been resolved and deletes the oldest rows from
@@ -272,8 +279,11 @@ func (d *Db) insertHtlcResolution(ctx context.Context, htlc *HtlcInfo) error {
                 incoming_htlc_index,
                 outgoing_peer,
                 outgoing_channel,
-                outgoing_htlc_index)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?);`
+                outgoing_htlc_index, 
+                incoming_endorsed,
+                outgoing_endorsed,
+                cltv_delta)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?);`
 
 	_, err := d.db.ExecContext(
 		ctx, insert,
@@ -288,9 +298,44 @@ func (d *Db) insertHtlcResolution(ctx context.Context, htlc *HtlcInfo) error {
 		hex.EncodeToString(htlc.outgoingPeer[:]),
 		htlc.outgoingCircuit.channel,
 		htlc.outgoingCircuit.htlc,
+		encodeEndorsed(htlc.incomingEndorsed),
+		encodeEndorsed(htlc.outgoingEndorsed),
+		htlc.cltvDelta,
 	)
 
 	return err
+}
+
+func encodeEndorsed(endorsed lrc.Endorsement) int {
+	switch endorsed {
+	case lrc.EndorsementNone:
+		return -1
+
+	case lrc.EndorsementTrue:
+		return 1
+
+	case lrc.EndorsementFalse:
+		return 0
+	}
+
+	return 0
+}
+
+func decodeEndorsed(endorsed int) (lrc.Endorsement, error) {
+	switch endorsed {
+	case -1:
+		return lrc.EndorsementNone, nil
+
+	case 1:
+		return lrc.EndorsementTrue, nil
+
+	case 0:
+		return lrc.EndorsementFalse, nil
+
+	}
+
+	return lrc.EndorsementNone,
+		fmt.Errorf("unknown endorsement: %v", endorsed)
 }
 
 // limitHTLCRecords counts the number of forwarding history records in the database and
@@ -352,7 +397,10 @@ func (d *Db) ListForwardingHistory(ctx context.Context, start, end time.Time) (
                 incoming_htlc_index,
                 outgoing_peer,
                 outgoing_channel,
-                outgoing_htlc_index
+                outgoing_htlc_index,
+                incoming_endorsed,
+                outgoing_endorsed,
+                cltv_delta
                 FROM forwarding_history
                 WHERE add_time >= ? AND add_time < ?;`
 
@@ -365,9 +413,10 @@ func (d *Db) ListForwardingHistory(ctx context.Context, start, end time.Time) (
 	var htlcs []*HtlcInfo
 	for rows.Next() {
 		var (
-			incomingPeer, outgoingPeer string
-			addTime, resolveTime       uint64
-			htlc                       HtlcInfo
+			incomingPeer, outgoingPeer         string
+			addTime, resolveTime               uint64
+			incomingEndorsed, outgoingEndorsed int
+			htlc                               HtlcInfo
 		)
 
 		err := rows.Scan(
@@ -382,6 +431,9 @@ func (d *Db) ListForwardingHistory(ctx context.Context, start, end time.Time) (
 			&outgoingPeer,
 			&htlc.outgoingCircuit.channel,
 			&htlc.outgoingCircuit.htlc,
+			&incomingEndorsed,
+			&outgoingEndorsed,
+			&htlc.cltvDelta,
 		)
 		if err != nil {
 			return nil, err
@@ -395,6 +447,16 @@ func (d *Db) ListForwardingHistory(ctx context.Context, start, end time.Time) (
 		}
 
 		htlc.outgoingPeer, err = route.NewVertexFromStr(outgoingPeer)
+		if err != nil {
+			return nil, err
+		}
+
+		htlc.incomingEndorsed, err = decodeEndorsed(incomingEndorsed)
+		if err != nil {
+			return nil, err
+		}
+
+		htlc.outgoingEndorsed, err = decodeEndorsed(outgoingEndorsed)
 		if err != nil {
 			return nil, err
 		}
