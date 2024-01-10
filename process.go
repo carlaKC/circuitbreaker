@@ -92,8 +92,8 @@ type process struct {
 	chanMap  map[uint64]*channel
 	aliasMap map[route.Vertex]string
 
-	peerCtrls map[route.Vertex]*peerController
-
+	peerCtrls           map[route.Vertex]*peerController
+	resourceController  *resourceController
 	burstSize           int
 	peerRefreshInterval time.Duration
 
@@ -101,7 +101,36 @@ type process struct {
 	resolvedCallback func()
 }
 
-func NewProcess(client lndclient, log *zap.SugaredLogger, limits *Limits, db *Db) *process {
+func NewProcess(client lndclient, log *zap.SugaredLogger,
+	limits *Limits, db *Db) (*process, error) {
+
+	// TODO: include closed channels in bootstrap.
+	channels, err := client.listChannels()
+	if err != nil {
+		return nil, err
+	}
+
+	listHistoryFunc := func(start, end time.Time) (
+		[]*lrc.ForwardedHTLC, error) {
+
+		htlcs, err := db.ListForwardingHistory(
+			context.Background(), start, end,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		return circuitbreakerToLRCHistory(htlcs), nil
+	}
+
+	resourceController, err := newResourceController(
+		db.RecordHtlcResolution,
+		listHistoryFunc, channels,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	return &process{
 		db:                      db,
 		log:                     log,
@@ -114,10 +143,11 @@ func NewProcess(client lndclient, log *zap.SugaredLogger, limits *Limits, db *Db
 		chanMap:                 make(map[uint64]*channel),
 		aliasMap:                make(map[route.Vertex]string),
 		peerCtrls:               make(map[route.Vertex]*peerController),
+		resourceController:      resourceController,
 		limits:                  limits,
 		burstSize:               burstSize,
 		peerRefreshInterval:     defaultPeerRefreshInterval,
-	}
+	}, nil
 }
 
 type updateLimitEvent struct {
@@ -235,11 +265,11 @@ func (p *process) peerRefreshLoop(ctx context.Context) error {
 	}
 }
 
-// getController fetches the appropriate traffic controller.
+// getController hardcodes using local resource conservation.
 func (p *process) getController(ctx context.Context, peer route.Vertex,
 	startGo func(func() error)) controller {
 
-	return p.getPeerController(ctx, peer, startGo)
+	return p.resourceController
 }
 
 func (p *process) getPeerController(ctx context.Context, peer route.Vertex,

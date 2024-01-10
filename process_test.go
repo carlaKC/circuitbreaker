@@ -55,7 +55,7 @@ func testProcess(t *testing.T, event resolveEvent) {
 		},
 	}
 
-	p := NewProcess(client, log, cfg, db)
+	p, _ := NewProcess(client, log, cfg, db)
 
 	resolved := make(chan struct{})
 	p.resolvedCallback = func() {
@@ -136,7 +136,7 @@ func testRateLimit(t *testing.T, mode Mode) {
 
 	log := zaptest.NewLogger(t).Sugar()
 
-	p := NewProcess(client, log, cfg, db)
+	p, _ := NewProcess(client, log, cfg, db)
 	p.burstSize = 2
 
 	exit := make(chan error)
@@ -228,7 +228,7 @@ func testMaxPending(t *testing.T, mode Mode) {
 
 	log := zaptest.NewLogger(t).Sugar()
 
-	p := NewProcess(client, log, cfg, db)
+	p, _ := NewProcess(client, log, cfg, db)
 	p.burstSize = 2
 
 	exit := make(chan error)
@@ -290,7 +290,7 @@ func TestNewPeer(t *testing.T) {
 
 	cfg := &Limits{}
 
-	p := NewProcess(client, log, cfg, db)
+	p, _ := NewProcess(client, log, cfg, db)
 
 	// Setup quick peer refresh.
 	p.peerRefreshInterval = 100 * time.Millisecond
@@ -341,7 +341,7 @@ func TestBlocked(t *testing.T) {
 
 	log := zaptest.NewLogger(t).Sugar()
 
-	p := NewProcess(client, log, cfg, db)
+	p, _ := NewProcess(client, log, cfg, db)
 
 	exit := make(chan error)
 	go func() {
@@ -382,7 +382,7 @@ func TestChannelNotFound(t *testing.T) {
 
 	cfg := &Limits{}
 
-	p := NewProcess(client, log, cfg, db)
+	p, _ := NewProcess(client, log, cfg, db)
 
 	exit := make(chan error)
 
@@ -466,7 +466,7 @@ func testLookupOutgoingChannel(t *testing.T, settled, outgoingFound bool,
 
 	cfg := &Limits{}
 
-	p := NewProcess(client, log, cfg, db)
+	p, _ := NewProcess(client, log, cfg, db)
 
 	resolved := make(chan struct{})
 	p.resolvedCallback = func() {
@@ -536,7 +536,7 @@ func TestClosedChannelHtlc(t *testing.T) {
 
 	cfg := &Limits{}
 
-	p := NewProcess(client, log, cfg, db)
+	p, _ := NewProcess(client, log, cfg, db)
 
 	exit := make(chan error)
 

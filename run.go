@@ -98,7 +98,10 @@ func run(c *cli.Context) error {
 		return err
 	}
 
-	p := NewProcess(client, log, limits, db)
+	p, err := NewProcess(client, log, limits, db)
+	if err != nil {
+		return err
+	}
 
 	grpcServer := grpc.NewServer(
 		grpc.MaxRecvMsgSize(maxGrpcMsgSize),
