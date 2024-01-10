@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/carlakc/lrc"
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/lightningnetwork/lnd/routing/route"
 	"go.uber.org/zap"
@@ -49,6 +50,7 @@ type interceptEvent struct {
 	incomingMsat       lnwire.MilliSatoshi
 	outgoingMsat       lnwire.MilliSatoshi
 	cltvDelta          uint32
+	endorsed           lrc.Endorsement
 	resume             func(bool) error
 }
 
@@ -531,6 +533,7 @@ func (p *process) processInterceptor(ctx context.Context,
 			incomingMsat:       event.incomingMsat,
 			outgoingMsat:       event.outgoingMsat,
 			cltvDelta:          uint32(event.cltvDelta),
+			endorsed:           event.endorsed,
 			resume:             resume,
 		}:
 
