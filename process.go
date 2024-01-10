@@ -51,7 +51,7 @@ type interceptEvent struct {
 	outgoingMsat       lnwire.MilliSatoshi
 	cltvDelta          uint32
 	endorsed           lrc.Endorsement
-	resume             func(bool) error
+	resume             func(bool, lrc.Endorsement) error
 }
 
 type resolvedEvent struct {
@@ -519,10 +519,22 @@ func (p *process) processInterceptor(ctx context.Context,
 
 		key := event.incomingCircuitKey
 
-		resume := func(resume bool) error {
+		resume := func(resume bool,
+			outgoingEndorsed lrc.Endorsement) error {
+
+			// Sanity check that we're using these params
+			// correctly.
+			if !resume && outgoingEndorsed != lrc.EndorsementNone {
+				return fmt.Errorf("do not set endorsement "+
+					"signal: %v when not resuming",
+					outgoingEndorsed,
+				)
+			}
+
 			return interceptor.send(&interceptResponse{
-				key:    key,
-				resume: resume,
+				key:             key,
+				resume:          resume,
+				endorseOutgoing: outgoingEndorsed,
 			})
 		}
 

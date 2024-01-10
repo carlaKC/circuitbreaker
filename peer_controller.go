@@ -5,6 +5,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/carlakc/lrc"
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/lightningnetwork/lnd/routing/route"
 	"github.com/paulbellamy/ratecounter"
@@ -288,7 +289,8 @@ func (p *peerController) run(ctx context.Context) error {
 			// that htlc. For those htlcs, just resume.
 			_, ok := p.htlcs[event.incomingCircuitKey]
 			if ok {
-				if err := event.resume(true); err != nil {
+				err := event.resume(true, lrc.EndorsementNone)
+				if err != nil {
 					return err
 				}
 
@@ -337,7 +339,8 @@ func (p *peerController) run(ctx context.Context) error {
 			}
 
 			// Otherwise fail directly.
-			if err := event.resume(false); err != nil {
+			err := event.resume(false, lrc.EndorsementNone)
+			if err != nil {
 				return err
 			}
 
@@ -482,7 +485,7 @@ func (p *peerController) forward(event interceptEvent) error {
 		outgoingMsat: event.outgoingMsat,
 	}
 
-	err := event.resume(true)
+	err := event.resume(true, lrc.EndorsementNone)
 	if err != nil {
 		return err
 	}
