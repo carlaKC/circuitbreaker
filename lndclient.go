@@ -150,8 +150,9 @@ func (h *lndHtlcInterceptorClient) recv() (*interceptedEvent, error) {
 }
 
 type interceptResponse struct {
-	key    circuitKey
-	resume bool
+	key             circuitKey
+	resume          bool
+	endorseOutgoing lrc.Endorsement
 }
 
 func (h *lndHtlcInterceptorClient) send(resp *interceptResponse) error {
@@ -165,6 +166,17 @@ func (h *lndHtlcInterceptorClient) send(resp *interceptResponse) error {
 		response.Action = routerrpc.ResolveHoldForwardAction_RESUME
 	} else {
 		response.Action = routerrpc.ResolveHoldForwardAction_FAIL
+	}
+
+	switch resp.endorseOutgoing {
+	case lrc.EndorsementTrue:
+		response.Endorsed = routerrpc.HTLCEndorsement_ENDORSEMENT_TRUE
+
+	case lrc.EndorsementFalse:
+		response.Endorsed = routerrpc.HTLCEndorsement_ENDORSEMENT_FALSE
+
+	default:
+		response.Endorsed = routerrpc.HTLCEndorsement_ENDORSEMENT_UNKNOWN
 	}
 
 	return h.client.Send(response)
