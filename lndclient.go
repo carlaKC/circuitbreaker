@@ -232,6 +232,10 @@ func (l *lndclientGrpc) getInfo() (*info, error) {
 type channel struct {
 	peer      route.Vertex
 	initiator bool
+	// The number of in-flight htlcs that we can offer our peer.
+	outgoingSlotLimit uint32
+	// The total msat amount of in-flight htlcs we can offer our peer.
+	outgoingLiquidityLimit lnwire.MilliSatoshi
 }
 
 func (l *lndclientGrpc) listChannels() (map[uint64]*channel, error) {
@@ -253,6 +257,10 @@ func (l *lndclientGrpc) listChannels() (map[uint64]*channel, error) {
 		chans[rpcChan.ChanId] = &channel{
 			peer:      peer,
 			initiator: rpcChan.Initiator,
+			outgoingLiquidityLimit: lnwire.MilliSatoshi(
+				rpcChan.LocalConstraints.MaxPendingAmtMsat,
+			),
+			outgoingSlotLimit: rpcChan.LocalConstraints.MaxAcceptedHtlcs,
 		}
 	}
 
