@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/carlakc/lrc"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnrpc/routerrpc"
 	"github.com/lightningnetwork/lnd/lnwire"
@@ -29,6 +30,8 @@ var (
 
 	ctxb = context.Background()
 )
+
+const endorsedType = uint64(65555)
 
 type lndclientGrpc struct {
 	conn *grpc.ClientConn
@@ -110,6 +113,7 @@ type interceptedEvent struct {
 	incomingMsat       lnwire.MilliSatoshi
 	outgoingMsat       lnwire.MilliSatoshi
 	cltvDelta          uint64
+	endorsed           lrc.Endorsement
 }
 
 func (h *lndHtlcInterceptorClient) recv() (*interceptedEvent, error) {
@@ -118,7 +122,7 @@ func (h *lndHtlcInterceptorClient) recv() (*interceptedEvent, error) {
 		return nil, err
 	}
 
-	return &interceptedEvent{
+	intercept := &interceptedEvent{
 		incomingCircuitKey: circuitKey{
 			channel: event.IncomingCircuitKey.ChanId,
 			htlc:    event.IncomingCircuitKey.HtlcId,
@@ -127,7 +131,22 @@ func (h *lndHtlcInterceptorClient) recv() (*interceptedEvent, error) {
 		incomingMsat:    lnwire.MilliSatoshi(event.IncomingAmountMsat),
 		outgoingMsat:    lnwire.MilliSatoshi(event.OutgoingAmountMsat),
 		cltvDelta:       uint64(event.IncomingExpiry) - uint64(event.OutgoingExpiry),
-	}, nil
+	}
+
+	switch event.Endorsed {
+	case routerrpc.HTLCEndorsement_ENDORSEMENT_TRUE:
+		intercept.endorsed = lrc.EndorsementTrue
+
+	case routerrpc.HTLCEndorsement_ENDORSEMENT_FALSE:
+		intercept.endorsed = lrc.EndorsementFalse
+
+	case routerrpc.HTLCEndorsement_ENDORSEMENT_UNKNOWN:
+		intercept.endorsed = lrc.EndorsementNone
+	default:
+		intercept.endorsed = lrc.EndorsementNone
+
+	}
+	return intercept, nil
 }
 
 type interceptResponse struct {
