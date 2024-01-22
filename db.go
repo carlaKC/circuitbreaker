@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/carlakc/lrc"
+	"github.com/lightningnetwork/lnd/lntypes"
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/lightningnetwork/lnd/routing/route"
 	migrate "github.com/rubenv/sql-migrate"
@@ -76,6 +77,23 @@ var migrations = &migrate.MemoryMigrationSource{
                                         CONSTRAINT unique_outgoing_circuit UNIQUE (outgoing_channel, outgoing_htlc_index)
                                 );`,
 				`CREATE INDEX add_time_index ON forwarding_history (add_time);`,
+			},
+		},
+		{
+			Id: "4",
+			Up: []string{
+				`CREATE TABLE IF NOT EXISTS reputation_thresholds (
+                                        payment_hash TEXT PRIMARY KEY NOT NULL,
+                                        forward_time TIMESTAMP NOT NULL,
+                                        incoming_channel INTEGER NOT NULL,
+                                        outgoing_channel INTEGER NOT NULL,
+                                        incoming_revenue REAL NOT NULL,
+                                        in_flight_risk REAL NOT NULL,
+                                        htlc_risk REAL NOT NULL,
+                                        outgoing_revenue REAL NOT NULL,
+                                        outcome INTEGER NOT NULL
+                                );`,
+				`CREATE INDEX forward_time_index ON reputation_thresholds (forward_time);`,
 			},
 		},
 	},
@@ -465,4 +483,41 @@ func (d *Db) ListForwardingHistory(ctx context.Context, start, end time.Time) (
 	}
 
 	return htlcs, nil
+}
+
+type htlcThresholds struct {
+	paymentHash     lntypes.Hash
+	forwardTs       time.Time
+	incomingChannel uint64
+	outgoingChannel uint64
+	incomingRevenue float64
+	inFlightRisk    float64
+	htlcRisk        float64
+	outgoingRevenue float64
+	outcome         lrc.ForwardOutcome
+}
+
+// InsertThreshold stores the values used to make reputation decisions for a HTLC.
+func (d *Db) InsertThreshold(ctx context.Context, threshold *htlcThresholds) error {
+	query := `INSERT INTO reputation_thresholds (
+                payment_hash,
+                forward_time, 
+                incoming_channel,
+                outgoing_channel,
+                incoming_revenue,
+                in_flight_risk,
+                htlc_risk,
+                outgoing_revenue,
+                outcome
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`
+
+	_, err := d.db.ExecContext(
+		ctx, query, threshold.paymentHash.String(), threshold.forwardTs.UnixNano(),
+		threshold.incomingChannel, threshold.outgoingChannel,
+		threshold.incomingRevenue, threshold.inFlightRisk, threshold.htlcRisk,
+		threshold.outgoingRevenue, threshold.outcome,
+	)
+
+	return err
 }
