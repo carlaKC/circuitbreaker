@@ -46,6 +46,12 @@ service Service {
             get:"/forwarding_history"
         };
     }
+
+    rpc ListReputationThresholds (ListReputationThresholdsRequest) returns (ListReputationThresholdsResponse) {
+        option (google.api.http) = {
+            get:"/reputation_thresholds"
+        };
+    }
 }
 
 message GetInfoRequest {}
@@ -151,4 +157,30 @@ message Forward {
     bool incoming_endorsed = 10;
     bool outgoing_endorsed = 11;
     uint32 cltv_delta = 12;
+}
+
+message ListReputationThresholdsRequest {
+    // The inclusive start time for the query, used to filter HTLCs by the time they were added 
+    // to local incoming channel. If this value is zero, it will be treated as the unix epoch.
+    int64 add_start_time_ns = 1;
+
+    // The exclusive end time for the query, used to filter HTLCs by the time they were added to 
+    // the local incoming channel. If this value is zero, it will be assumed to be the current time.
+    int64 add_end_time_ns = 2; 
+}
+
+message ListReputationThresholdsResponse {
+    repeated ReputationThreshold htlcs = 1; 
+}
+
+message ReputationThreshold{
+  string payment_hash = 1;
+  uint64 forward_ts_ns = 2;
+  uint64 incoming_channel = 3;
+  uint64 outgoing_channel = 4;
+  double incoming_revenue = 5;
+  double in_flight_risk = 6;
+  double htlc_risk = 7;
+  double outgoing_revenue = 8;
+  uint32 outcome = 9;
 }

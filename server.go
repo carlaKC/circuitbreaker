@@ -314,29 +314,39 @@ func (s *server) ListLimits(ctx context.Context,
 	}, nil
 }
 
-func (s *server) ListForwardingHistory(ctx context.Context,
-	req *circuitbreakerrpc.ListForwardingHistoryRequest) (
-	*circuitbreakerrpc.ListForwardingHistoryResponse, error) {
-
+func getTimeRange(startTimeNs, endTimeNs int64) (time.Time, time.Time, error) {
 	var (
 		// By default query from the epoch until now.
 		startTime = time.Time{}
 		endTime   = time.Now()
 	)
 
-	if req.AddStartTimeNs != 0 {
-		startTime = time.Unix(0, req.AddStartTimeNs)
+	if startTimeNs != 0 {
+		startTime = time.Unix(0, startTimeNs)
 	}
 
-	if req.AddEndTimeNs != 0 {
-		endTime = time.Unix(0, req.AddEndTimeNs)
+	if endTimeNs != 0 {
+		endTime = time.Unix(0, endTimeNs)
 	}
 
 	if startTime.After(endTime) {
-		return nil, fmt.Errorf("start time: %v after end time: %v", startTime,
-			endTime)
+		return time.Time{}, time.Time{},
+			fmt.Errorf("start time: %v after end time: %v", startTime, endTime)
 	}
 
+	return startTime, endTime, nil
+}
+
+func (s *server) ListForwardingHistory(ctx context.Context,
+	req *circuitbreakerrpc.ListForwardingHistoryRequest) (
+	*circuitbreakerrpc.ListForwardingHistoryResponse, error) {
+
+	startTime, endTime, err := getTimeRange(
+		req.AddStartTimeNs, req.AddEndTimeNs,
+	)
+	if err != nil {
+		return nil, err
+	}
 	htlcs, err := s.db.ListForwardingHistory(ctx, startTime, endTime)
 	if err != nil {
 		return nil, err
@@ -379,6 +389,48 @@ func (s *server) marshalFwdHistory(htlcs []*HtlcInfo) []*circuitbreakerrpc.Forwa
 		}
 
 		rpcHtlcs[i] = forward
+	}
+
+	return rpcHtlcs
+}
+
+func (s *server) ListReputationThresholds(ctx context.Context,
+	req *circuitbreakerrpc.ListReputationThresholdsRequest) (
+	*circuitbreakerrpc.ListReputationThresholdsResponse, error) {
+
+	startTime, endTime, err := getTimeRange(
+		req.AddStartTimeNs, req.AddEndTimeNs,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	htlcs, err := s.db.ListThresholds(ctx, startTime, endTime)
+	if err != nil {
+		return nil, err
+	}
+
+	return &circuitbreakerrpc.ListReputationThresholdsResponse{
+		Htlcs: marshalRepThresholds(htlcs),
+	}, nil
+}
+
+func marshalRepThresholds(thresholds []*htlcThresholds) []*circuitbreakerrpc.ReputationThreshold {
+	rpcHtlcs := make([]*circuitbreakerrpc.ReputationThreshold, len(thresholds))
+	for i, htlc := range thresholds {
+		threshold := &circuitbreakerrpc.ReputationThreshold{
+			PaymentHash:     htlc.paymentHash.String(),
+			ForwardTsNs:     uint64(htlc.forwardTs.UnixNano()),
+			IncomingChannel: htlc.incomingChannel,
+			OutgoingChannel: htlc.outgoingChannel,
+			IncomingRevenue: htlc.incomingRevenue,
+			InFlightRisk:    htlc.inFlightRisk,
+			HtlcRisk:        htlc.htlcRisk,
+			OutgoingRevenue: htlc.outgoingRevenue,
+			Outcome:         uint32(htlc.outcome),
+		}
+
+		rpcHtlcs[i] = threshold
 	}
 
 	return rpcHtlcs

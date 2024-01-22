@@ -1327,3 +1327,243 @@ var _ interface {
 	Cause() error
 	ErrorName() string
 } = ForwardValidationError{}
+
+// Validate checks the field values on ListReputationThresholdsRequest with the
+// rules defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *ListReputationThresholdsRequest) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for AddStartTimeNs
+
+	// no validation rules for AddEndTimeNs
+
+	return nil
+}
+
+// ListReputationThresholdsRequestValidationError is the validation error
+// returned by ListReputationThresholdsRequest.Validate if the designated
+// constraints aren't met.
+type ListReputationThresholdsRequestValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e ListReputationThresholdsRequestValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e ListReputationThresholdsRequestValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e ListReputationThresholdsRequestValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e ListReputationThresholdsRequestValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e ListReputationThresholdsRequestValidationError) ErrorName() string {
+	return "ListReputationThresholdsRequestValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e ListReputationThresholdsRequestValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sListReputationThresholdsRequest.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = ListReputationThresholdsRequestValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = ListReputationThresholdsRequestValidationError{}
+
+// Validate checks the field values on ListReputationThresholdsResponse with
+// the rules defined in the proto definition for this message. If any rules
+// are violated, an error is returned.
+func (m *ListReputationThresholdsResponse) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	for idx, item := range m.GetHtlcs() {
+		_, _ = idx, item
+
+		if v, ok := interface{}(item).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return ListReputationThresholdsResponseValidationError{
+					field:  fmt.Sprintf("Htlcs[%v]", idx),
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	}
+
+	return nil
+}
+
+// ListReputationThresholdsResponseValidationError is the validation error
+// returned by ListReputationThresholdsResponse.Validate if the designated
+// constraints aren't met.
+type ListReputationThresholdsResponseValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e ListReputationThresholdsResponseValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e ListReputationThresholdsResponseValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e ListReputationThresholdsResponseValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e ListReputationThresholdsResponseValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e ListReputationThresholdsResponseValidationError) ErrorName() string {
+	return "ListReputationThresholdsResponseValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e ListReputationThresholdsResponseValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sListReputationThresholdsResponse.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = ListReputationThresholdsResponseValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = ListReputationThresholdsResponseValidationError{}
+
+// Validate checks the field values on ReputationThreshold with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *ReputationThreshold) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for PaymentHash
+
+	// no validation rules for ForwardTsNs
+
+	// no validation rules for IncomingChannel
+
+	// no validation rules for OutgoingChannel
+
+	// no validation rules for IncomingRevenue
+
+	// no validation rules for InFlightRisk
+
+	// no validation rules for HtlcRisk
+
+	// no validation rules for OutgoingRevenue
+
+	// no validation rules for Outcome
+
+	return nil
+}
+
+// ReputationThresholdValidationError is the validation error returned by
+// ReputationThreshold.Validate if the designated constraints aren't met.
+type ReputationThresholdValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e ReputationThresholdValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e ReputationThresholdValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e ReputationThresholdValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e ReputationThresholdValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e ReputationThresholdValidationError) ErrorName() string {
+	return "ReputationThresholdValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e ReputationThresholdValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sReputationThreshold.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = ReputationThresholdValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = ReputationThresholdValidationError{}
