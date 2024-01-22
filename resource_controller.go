@@ -7,6 +7,7 @@ import (
 
 	"github.com/carlakc/lrc"
 	"github.com/lightningnetwork/lnd/clock"
+	"github.com/lightningnetwork/lnd/lntypes"
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/lightningnetwork/lnd/routing/route"
 )
@@ -19,6 +20,7 @@ var _ controller = (*resourceController)(nil)
 // implementation in the controller interface.
 type resourceController struct {
 	htlcCompleted htlcCompletedFunc
+	htlcThreshold htlcThresholdFunc
 	lrc.LocalResourceManager
 }
 
@@ -27,6 +29,8 @@ type resourceController struct {
 type listHistoryFunc func(start, end time.Time) ([]*lrc.ForwardedHTLC, error)
 
 type htlcCompletedFunc func(context.Context, *HtlcInfo) error
+
+type htlcThresholdFunc func(context.Context, *htlcThresholds) error
 
 func circuitbreakerToLRCHistory(htlcs []*HtlcInfo) []*lrc.ForwardedHTLC {
 	htlcList := make([]*lrc.ForwardedHTLC, len(htlcs))
@@ -68,7 +72,8 @@ func circuitbreakerToLRCHistory(htlcs []*HtlcInfo) []*lrc.ForwardedHTLC {
 // newResourceController creates a new resource controller, using default values. It
 // takes a set of previously forwarded htlcs and the node's known channels as parameters
 // to bootstrap the state of the manager.
-func newResourceController(htlcCompleted htlcCompletedFunc, listHistory listHistoryFunc,
+func newResourceController(htlcCompleted htlcCompletedFunc,
+	htlcThreshold htlcThresholdFunc, listHistory listHistoryFunc,
 	channels map[uint64]*channel) (*resourceController, error) {
 
 	// Assess revenue over 2016 blocks, ~2 weeks.
@@ -117,6 +122,7 @@ func newResourceController(htlcCompleted htlcCompletedFunc, listHistory listHist
 
 	return &resourceController{
 		htlcCompleted,
+		htlcThreshold,
 		manager,
 	}, nil
 }
@@ -134,9 +140,16 @@ func (r *resourceController) process(ctx context.Context, event peerInterceptEve
 		return err
 	}
 
-	log.Infof("Resource Controller %v -> outgoing endorsed: %v (%v)",
-		event.interceptEvent, action.ForwardOutcome,
-		&action.ReputationCheck)
+	log.Infof("Resource Controller %v -> outgoing endorsed: %v",
+		event.interceptEvent, action.ForwardOutcome)
+
+	threshold := thresholdFromFwdDecision(
+		time.Now(), action, event.incomingCircuitKey.channel,
+		event.outgoingChannel, event.paymentHash,
+	)
+	if err := r.htlcThreshold(context.Background(), threshold); err != nil {
+		return err
+	}
 
 	switch action.ForwardOutcome {
 	case lrc.ForwardOutcomeEndorsed:
@@ -146,7 +159,6 @@ func (r *resourceController) process(ctx context.Context, event peerInterceptEve
 		event.resume(true, lrc.EndorsementFalse)
 
 	case lrc.ForwardOutcomeNoResources:
-		// TODO: store HTLC rejected
 		event.resume(false, lrc.EndorsementNone)
 
 	default:
@@ -207,5 +219,21 @@ func resolvedHTLCFromIntercepted(resolved resolvedEvent) *lrc.ResolvedHTLC {
 		),
 		Success:          resolved.settled,
 		TimestampSettled: resolved.timestamp,
+	}
+}
+
+func thresholdFromFwdDecision(ts time.Time, fwd *lrc.ForwardDecision, chanIn,
+	chanOut uint64, hash lntypes.Hash) *htlcThresholds {
+
+	return &htlcThresholds{
+		paymentHash:     hash,
+		forwardTs:       ts,
+		incomingChannel: chanIn,
+		outgoingChannel: chanOut,
+		incomingRevenue: fwd.ReputationCheck.IncomingRevenue,
+		inFlightRisk:    fwd.ReputationCheck.InFlightRisk,
+		htlcRisk:        fwd.ReputationCheck.HTLCRisk,
+		outgoingRevenue: fwd.ReputationCheck.OutgoingRevenue,
+		outcome:         fwd.ForwardOutcome,
 	}
 }
