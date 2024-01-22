@@ -521,3 +521,53 @@ func (d *Db) InsertThreshold(ctx context.Context, threshold *htlcThresholds) err
 
 	return err
 }
+
+// ListThresholds returns the reputation thresholds for HTLCs forwarded after startTime
+// and before or at endTime.
+func (d *Db) ListThresholds(ctx context.Context, startTime,
+	endTime time.Time) ([]*htlcThresholds, error) {
+
+	rows, err := d.db.Query(`
+		SELECT * FROM reputation_thresholds
+		WHERE forward_time > ? AND forward_time >= ?
+	`, startTime.Unix(), endTime.Unix())
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var htlcs []*htlcThresholds
+	for rows.Next() {
+		var (
+			htlc        = &htlcThresholds{}
+			paymentHash string
+			ts, outcome uint64
+		)
+		err := rows.Scan(
+			&paymentHash,
+			&ts,
+			&htlc.incomingChannel,
+			&htlc.outgoingChannel,
+			&htlc.incomingRevenue,
+			&htlc.inFlightRisk,
+			&htlc.htlcRisk,
+			&htlc.outgoingRevenue,
+			&outcome,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		htlc.forwardTs = time.Unix(0, int64(ts))
+		htlc.outcome = lrc.ForwardOutcome(outcome)
+
+		htlc.paymentHash, err = lntypes.MakeHashFromStr(paymentHash)
+		if err != nil {
+			return nil, err
+		}
+		htlcs = append(htlcs, htlc)
+	}
+
+	return htlcs, nil
+}
