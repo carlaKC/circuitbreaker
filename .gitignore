@@ -1,2 +1,3 @@
 /circuitbreaker
 **/node_modules
+*.csv
