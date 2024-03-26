@@ -82,10 +82,7 @@ func newResourceController(htlcCompleted htlcCompletedFunc,
 	// Assess reputation over 20 weeks (10x revenue)
 	reputationMultiplier := 10
 
-	// The only validation that we perform is on the 50% reserve, which
-	// we know is valid because we hardcode it.
-
-	manager, _ := lrc.NewReputationManager(
+	manager, err := lrc.NewReputationManager(
 		revenueWindow,
 		reputationMultiplier,
 		// Expect HTLCs to resolve within 90 seconds.
@@ -94,6 +91,9 @@ func newResourceController(htlcCompleted htlcCompletedFunc,
 		// Reserve 50% of resources for protected HTLCs.
 		50,
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	channelMap := make(map[lnwire.ShortChannelID]lrc.ChannelInfo)
 	for chanID, channel := range channels {
