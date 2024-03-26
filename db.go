@@ -404,7 +404,35 @@ func (d *Db) limitHTLCRecords(ctx context.Context) error {
 func (d *Db) ListForwardingHistory(ctx context.Context, start, end time.Time) (
 	[]*HtlcInfo, error) {
 
-	list := `SELECT 
+	whereClause := "WHERE add_time >= ? AND add_time < ?;"
+
+	return d.queryForwardingHistory(
+		ctx, whereClause, start.UnixNano(), end.UnixNano(),
+	)
+}
+
+// ListChannelHistory lists all forwards associated with the channel id
+// provided. If incomingOnly is provided, it'll limit to only forwards where 
+// the specified channel is the incoming channel.
+func (d *Db) ListChannelHistory(ctx context.Context,
+	channelID lnwire.ShortChannelID, incomingOnly bool) ([]*HtlcInfo,
+	error) {
+
+	whereClause := "WHERE incoming_channel == ? "
+	args := []any{channelID.ToUint64()}
+
+	if !incomingOnly {
+		whereClause += "OR outgoing_channel == ? "
+		args = append(args, channelID.ToUint64())
+	}
+
+	return d.queryForwardingHistory(ctx, whereClause+";", args...)
+}
+
+func (d *Db) queryForwardingHistory(ctx context.Context, whereClaue string,
+	args ...any) ([]*HtlcInfo, error) {
+
+	query := fmt.Sprintf(`SELECT 
                 add_time,
                 resolved_time,
                 settled,
@@ -420,9 +448,10 @@ func (d *Db) ListForwardingHistory(ctx context.Context, start, end time.Time) (
                 outgoing_endorsed,
                 cltv_delta
                 FROM forwarding_history
-                WHERE add_time >= ? AND add_time < ?;`
+                %v`,
+		whereClaue)
 
-	rows, err := d.db.QueryContext(ctx, list, start.UnixNano(), end.UnixNano())
+	rows, err := d.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
