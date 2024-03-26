@@ -24,10 +24,6 @@ type resourceController struct {
 	lrc.LocalResourceManager
 }
 
-// listHistoryFunc is the signature of a function used to look up historical
-// htlcs.
-type listHistoryFunc func(start, end time.Time) ([]*lrc.ForwardedHTLC, error)
-
 type htlcCompletedFunc func(context.Context, *HtlcInfo) error
 
 type htlcThresholdFunc func(context.Context, *htlcThresholds) error
@@ -73,7 +69,7 @@ func circuitbreakerToLRCHistory(htlcs []*HtlcInfo) []*lrc.ForwardedHTLC {
 // takes a set of previously forwarded htlcs and the node's known channels as parameters
 // to bootstrap the state of the manager.
 func newResourceController(htlcCompleted htlcCompletedFunc,
-	htlcThreshold htlcThresholdFunc, listHistory listHistoryFunc,
+	htlcThreshold htlcThresholdFunc, chanHistory lrc.ChannelHistory,
 	channels map[uint64]*channel) (*resourceController, error) {
 
 	// Assess revenue over 2016 blocks, ~2 weeks.
@@ -88,6 +84,7 @@ func newResourceController(htlcCompleted htlcCompletedFunc,
 		// Expect HTLCs to resolve within 90 seconds.
 		time.Second*90,
 		clock.NewDefaultClock(),
+		chanHistory,
 		// Reserve 50% of resources for protected HTLCs.
 		50,
 	)
@@ -101,23 +98,6 @@ func newResourceController(htlcCompleted htlcCompletedFunc,
 			InFlightHTLC:      uint64(channel.outgoingSlotLimit),
 			InFlightLiquidity: channel.outgoingLiquidityLimit,
 		}
-	}
-
-	// We want to bootstrap the reputation manager with historical htlcs. We want
-	// all of our history that falls within the reputation window we're concerned
-	// with (which is the revenue window * reputation multiplier).
-	reputationWindow := revenueWindow * time.Duration(-1*reputationMultiplier)
-	endTime := time.Now()
-	startTime := endTime.Add(reputationWindow)
-
-	htlcs, err := listHistory(startTime, endTime)
-	if err != nil {
-		return nil, err
-	}
-
-	// Bootstrap the manager with any HTLCs that we've previously forwarded.
-	if err := manager.AddHistoricalHTLCs(htlcs, channelMap); err != nil {
-		return nil, err
 	}
 
 	return &resourceController{

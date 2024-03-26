@@ -112,11 +112,11 @@ func NewProcess(client lndclient, log *zap.SugaredLogger,
 		return nil, err
 	}
 
-	listHistoryFunc := func(start, end time.Time) (
-		[]*lrc.ForwardedHTLC, error) {
+	chanHistoryFunc := func(id lnwire.ShortChannelID,
+		incomingOnly bool) ([]*lrc.ForwardedHTLC, error) {
 
-		htlcs, err := db.ListForwardingHistory(
-			context.Background(), start, end,
+		htlcs, err := db.ListChannelHistory(
+			context.Background(), id, incomingOnly,
 		)
 		if err != nil {
 			return nil, err
@@ -128,7 +128,7 @@ func NewProcess(client lndclient, log *zap.SugaredLogger,
 	resourceController, err := newResourceController(
 		db.RecordHtlcResolution,
 		db.InsertThreshold,
-		listHistoryFunc, channels,
+		chanHistoryFunc, channels,
 	)
 	if err != nil {
 		return nil, err
