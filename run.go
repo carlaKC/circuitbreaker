@@ -3,19 +3,25 @@ package main
 import (
 	"context"
 	"embed"
+	"encoding/csv"
 	"errors"
+	"fmt"
 	"io/fs"
+	"math"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"syscall"
 	"time"
 
+	"github.com/carlakc/lrc"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/lightningequipment/circuitbreaker/circuitbreakerrpc"
+	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/urfave/cli"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -91,6 +97,31 @@ func run(c *cli.Context) error {
 		defer lndClient.Close()
 
 		client = lndClient
+	}
+
+	// If we want to bootstrap history in our database, we'll pull out any entries
+	// in the file provided that match our node alias. To allow testing where we
+	// don't have this file set, we'll only bootstrap if it exists.
+	// Get the current working directory
+	wd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	fowardsFile := wd + "/htlc_forwards.csv"
+	if _, err := os.Stat(fowardsFile); err == nil {
+		info, err := client.getInfo()
+		if err != nil {
+			return err
+		}
+
+		if err = loadHistoricalForwards(
+			ctx, fowardsFile, db, info.alias,
+		); err != nil {
+			return err
+		}
+	} else {
+		log.Infof("No htlc_forwards.csv file to import: %v", fowardsFile)
 	}
 
 	limits, err := db.GetLimits(ctx)
@@ -219,4 +250,103 @@ func run(c *cli.Context) error {
 	})
 
 	return group.Wait()
+}
+
+// read sim-ln generated CSV file of historical forwards into db.
+func loadHistoricalForwards(ctx context.Context, path string, db *Db,
+	alias string) error {
+
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	rows, err := csv.NewReader(file).ReadAll()
+	if err != nil {
+		return err
+	}
+
+	// We're loading in historical HTLCs, but we also want to allow
+	// regular operation of the channel (and we require unique index for
+	// our db) so we start with an index that we won't hit for real
+	// forwards once circuitbreaker starts running.
+	var startIdx uint64 = math.MaxUint64 / 2
+	for i, record := range rows {
+		recordAlias := record[9]
+		if recordAlias != alias {
+			continue
+		}
+
+		addTimeUnix, err := strconv.ParseInt(record[2], 10, 64)
+		if err != nil {
+			return fmt.Errorf("add time: %w", err)
+		}
+
+		resolveTimeUnix, err := strconv.ParseInt(record[3], 10, 64)
+		if err != nil {
+			return fmt.Errorf("remove time: %w", err)
+		}
+
+		amountIn, err := strconv.ParseInt(record[0], 10, 64)
+		if err != nil {
+			return fmt.Errorf("amount in: %w", err)
+		}
+
+		amountOut, err := strconv.ParseInt(record[4], 10, 64)
+		if err != nil {
+			return fmt.Errorf("amount out: %w", err)
+		}
+
+		cltvIn, err := strconv.ParseInt(record[1], 10, 64)
+		if err != nil {
+			return fmt.Errorf("cltv in: %w", err)
+		}
+
+		cltvOut, err := strconv.ParseInt(record[5], 10, 64)
+		if err != nil {
+			return fmt.Errorf("cltv out: %v", err)
+		}
+
+		if cltvIn < cltvOut {
+			return fmt.Errorf("cltv in %v < cltv out %v", cltvIn, cltvOut)
+		}
+
+		incomingChannel, err := strconv.ParseInt(record[10], 10, 64)
+		if err != nil {
+			return fmt.Errorf("incoming channel: %w", err)
+		}
+
+		outgoingChannel, err := strconv.ParseInt(record[11], 10, 64)
+		if err != nil {
+			return fmt.Errorf("outgoing channel: %w", err)
+		}
+
+		htlcInfo := &HtlcInfo{
+			addTime:      time.Unix(0, addTimeUnix),
+			resolveTime:  time.Unix(0, resolveTimeUnix),
+			settled:      true, // note: hard coding rn
+			incomingMsat: lnwire.MilliSatoshi(amountIn),
+			outgoingMsat: lnwire.MilliSatoshi(amountOut),
+			// Note: we don't provide incoming/outgoing peer rn.
+			incomingCircuit: circuitKey{
+				channel: uint64(incomingChannel),
+				htlc:    startIdx + uint64(i),
+			},
+			outgoingCircuit: circuitKey{
+				channel: uint64(outgoingChannel),
+				htlc:    startIdx + uint64(i),
+			},
+			incomingEndorsed: lrc.Endorsement(1),
+			outgoingEndorsed: lrc.Endorsement(0),
+			cltvDelta:        uint32(cltvIn - cltvOut),
+		}
+
+		// Append the HtlcInfo to the slice
+		if err := db.insertHtlcResolution(ctx, htlcInfo); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
