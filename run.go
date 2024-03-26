@@ -256,6 +256,8 @@ func run(c *cli.Context) error {
 func loadHistoricalForwards(ctx context.Context, path string, db *Db,
 	alias string) error {
 
+	log.Infof("Loading historical forwards from: %v.", path)
+
 	file, err := os.Open(path)
 	if err != nil {
 		return err
@@ -272,6 +274,7 @@ func loadHistoricalForwards(ctx context.Context, path string, db *Db,
 	// our db) so we start with an index that we won't hit for real
 	// forwards once circuitbreaker starts running.
 	var startIdx uint64 = math.MaxUint64 / 2
+	var ourHTLCs int
 	for i, record := range rows {
 		recordAlias := record[9]
 		if recordAlias != alias {
@@ -342,11 +345,16 @@ func loadHistoricalForwards(ctx context.Context, path string, db *Db,
 			cltvDelta:        uint32(cltvIn - cltvOut),
 		}
 
+		// Track imported HTLC count.
+		ourHTLCs++
+
 		// Append the HtlcInfo to the slice
 		if err := db.insertHtlcResolution(ctx, htlcInfo); err != nil {
 			return err
 		}
 	}
+
+	log.Infof("Successfully imported: %v htlcs for node alias: %v.", ourHTLCs, alias)
 
 	return nil
 }
