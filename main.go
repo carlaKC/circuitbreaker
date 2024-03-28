@@ -125,6 +125,10 @@ func main() {
 			Usage: "path to CircuitBreaker's base directory",
 		},
 		cli.StringFlag{
+			Name:  "loadhist",
+			Usage: "path to csv file to load historical forwards",
+		},
+		cli.StringFlag{
 			Name:  "listen",
 			Value: "127.0.0.1:9234",
 			Usage: "grpc server listen address",

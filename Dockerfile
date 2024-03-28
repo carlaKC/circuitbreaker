@@ -28,6 +28,4 @@ RUN apk add --no-cache ca-certificates && rm -rf /var/cache/apk/*
 # Copy over app binary
 COPY --from=build_backend /go/bin/circuitbreaker /usr/bin/circuitbreaker
 
-COPY htlc_forwards.csv .
-
 ENTRYPOINT [ "circuitbreaker" ]

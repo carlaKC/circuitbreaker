@@ -99,29 +99,21 @@ func run(c *cli.Context) error {
 		client = lndClient
 	}
 
-	// If we want to bootstrap history in our database, we'll pull out any entries
-	// in the file provided that match our node alias. To allow testing where we
-	// don't have this file set, we'll only bootstrap if it exists.
-	// Get the current working directory
-	wd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
-	fowardsFile := wd + "/htlc_forwards.csv"
-	if _, err := os.Stat(fowardsFile); err == nil {
+	// Load historical forwards if found.
+	loadHist := c.String("loadhist")
+	if loadHist != "" {
 		info, err := client.getInfo()
 		if err != nil {
 			return err
 		}
 
 		if err = loadHistoricalForwards(
-			ctx, fowardsFile, db, info.alias,
+			ctx, loadHist, db, info.alias,
 		); err != nil {
 			return err
 		}
 	} else {
-		log.Infof("No htlc_forwards.csv file to import: %v", fowardsFile)
+		log.Infof("No htlc_forwards.csv file to import: %v", loadHist)
 	}
 
 	limits, err := db.GetLimits(ctx)
