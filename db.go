@@ -65,10 +65,10 @@ var migrations = &migrate.MemoryMigrationSource{
                                         outgoing_amt_msat INTEGER NOT NULL CHECK (outgoing_amt_msat > 0),
                                         incoming_peer TEXT,
                                         incoming_channel INTEGER NOT NULL,
-                                        incoming_htlc_index INTEGER NOT NULL,
+                                        incoming_htlc_index UNSIGNED NOT NULL,
                                         outgoing_peer TEXT,
                                         outgoing_channel INTEGER NOT NULL,
-                                        outgoing_htlc_index INTEGER NOT NULL,
+                                        outgoing_htlc_index UNSIGNED NOT NULL,
                                         incoming_endorsed INTEGER,
                                         outgoing_endorsed INTEGER, 
                                         cltv_delta INTEGER NOT NULL,
@@ -412,7 +412,7 @@ func (d *Db) ListForwardingHistory(ctx context.Context, start, end time.Time) (
 }
 
 // ListChannelHistory lists all forwards associated with the channel id
-// provided. If incomingOnly is provided, it'll limit to only forwards where 
+// provided. If incomingOnly is provided, it'll limit to only forwards where
 // the specified channel is the incoming channel.
 func (d *Db) ListChannelHistory(ctx context.Context,
 	channelID lnwire.ShortChannelID, incomingOnly bool) ([]*HtlcInfo,
