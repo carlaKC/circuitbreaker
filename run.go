@@ -273,7 +273,7 @@ func loadHistoricalForwards(ctx context.Context, path string, db *Db,
 	// regular operation of the channel (and we require unique index for
 	// our db) so we start with an index that we won't hit for real
 	// forwards once circuitbreaker starts running.
-	var startIdx uint64 = math.MaxUint64 / 2
+	var startIdx uint64 = math.MaxUint64 / 4
 	var ourHTLCs int
 	for i, record := range rows {
 		recordAlias := record[9]
