@@ -124,7 +124,7 @@ func (r *resourceController) process(ctx context.Context, event peerInterceptEve
 		event.interceptEvent, action.ForwardOutcome)
 
 	threshold := thresholdFromFwdDecision(
-		time.Now(), action, event.incomingCircuitKey.channel,
+		time.Now(), action, event.incomingCircuitKey,
 		event.outgoingChannel, event.paymentHash,
 	)
 	if err := r.htlcThreshold(context.Background(), threshold); err != nil {
@@ -202,13 +202,13 @@ func resolvedHTLCFromIntercepted(resolved resolvedEvent) *lrc.ResolvedHTLC {
 	}
 }
 
-func thresholdFromFwdDecision(ts time.Time, fwd *lrc.ForwardDecision, chanIn,
-	chanOut uint64, hash lntypes.Hash) *htlcThresholds {
+func thresholdFromFwdDecision(ts time.Time, fwd *lrc.ForwardDecision,
+	chanIn circuitKey, chanOut uint64, hash lntypes.Hash) *htlcThresholds {
 
 	return &htlcThresholds{
 		paymentHash:     hash,
 		forwardTs:       ts,
-		incomingChannel: chanIn,
+		incomingCircuit: chanIn,
 		outgoingChannel: chanOut,
 		incomingRevenue: fwd.ReputationCheck.IncomingRevenue,
 		inFlightRisk:    fwd.ReputationCheck.InFlightRisk,

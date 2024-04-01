@@ -86,6 +86,7 @@ var migrations = &migrate.MemoryMigrationSource{
                                         payment_hash TEXT PRIMARY KEY NOT NULL,
                                         forward_time TIMESTAMP NOT NULL,
                                         incoming_channel INTEGER NOT NULL,
+                                        incoming_htlc_index UNSIGNED NOT NULL,
                                         outgoing_channel INTEGER NOT NULL,
                                         incoming_revenue REAL NOT NULL,
                                         in_flight_risk REAL NOT NULL,
@@ -517,7 +518,7 @@ func (d *Db) queryForwardingHistory(ctx context.Context, whereClaue string,
 type htlcThresholds struct {
 	paymentHash     lntypes.Hash
 	forwardTs       time.Time
-	incomingChannel uint64
+	incomingCircuit circuitKey
 	outgoingChannel uint64
 	incomingRevenue float64
 	inFlightRisk    float64
@@ -532,6 +533,7 @@ func (d *Db) InsertThreshold(ctx context.Context, threshold *htlcThresholds) err
                 payment_hash,
                 forward_time, 
                 incoming_channel,
+                incoming_htlc_index,
                 outgoing_channel,
                 incoming_revenue,
                 in_flight_risk,
@@ -539,12 +541,13 @@ func (d *Db) InsertThreshold(ctx context.Context, threshold *htlcThresholds) err
                 outgoing_revenue,
                 outcome
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`
 
 	_, err := d.db.ExecContext(
 		ctx, query, threshold.paymentHash.String(), threshold.forwardTs.UnixNano(),
-		threshold.incomingChannel, threshold.outgoingChannel,
-		threshold.incomingRevenue, threshold.inFlightRisk, threshold.htlcRisk,
+		threshold.incomingCircuit.channel, threshold.incomingCircuit.htlc,
+		threshold.outgoingChannel, threshold.incomingRevenue,
+		threshold.inFlightRisk, threshold.htlcRisk,
 		threshold.outgoingRevenue, threshold.outcome,
 	)
 
@@ -576,7 +579,8 @@ func (d *Db) ListThresholds(ctx context.Context, startTime,
 		err := rows.Scan(
 			&paymentHash,
 			&ts,
-			&htlc.incomingChannel,
+			&htlc.incomingCircuit.channel,
+			&htlc.incomingCircuit.htlc,
 			&htlc.outgoingChannel,
 			&htlc.incomingRevenue,
 			&htlc.inFlightRisk,

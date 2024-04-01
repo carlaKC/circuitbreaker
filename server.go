@@ -421,7 +421,7 @@ func marshalRepThresholds(thresholds []*htlcThresholds) []*circuitbreakerrpc.Rep
 		threshold := &circuitbreakerrpc.ReputationThreshold{
 			PaymentHash:     htlc.paymentHash.String(),
 			ForwardTsNs:     uint64(htlc.forwardTs.UnixNano()),
-			IncomingChannel: htlc.incomingChannel,
+			IncomingChannel: htlc.incomingCircuit.channel,
 			OutgoingChannel: htlc.outgoingChannel,
 			IncomingRevenue: htlc.incomingRevenue,
 			InFlightRisk:    htlc.inFlightRisk,
