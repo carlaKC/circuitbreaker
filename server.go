@@ -419,9 +419,12 @@ func marshalRepThresholds(thresholds []*htlcThresholds) []*circuitbreakerrpc.Rep
 	rpcHtlcs := make([]*circuitbreakerrpc.ReputationThreshold, len(thresholds))
 	for i, htlc := range thresholds {
 		threshold := &circuitbreakerrpc.ReputationThreshold{
-			PaymentHash:     htlc.paymentHash.String(),
-			ForwardTsNs:     uint64(htlc.forwardTs.UnixNano()),
-			IncomingChannel: htlc.incomingCircuit.channel,
+			PaymentHash: htlc.paymentHash.String(),
+			ForwardTsNs: uint64(htlc.forwardTs.UnixNano()),
+			IncomingCircuit: &circuitbreakerrpc.CircuitKey{
+				ShortChannelId: htlc.incomingCircuit.channel,
+				HtlcIndex:      uint32(htlc.incomingCircuit.htlc),
+			},
 			OutgoingChannel: htlc.outgoingChannel,
 			IncomingRevenue: htlc.incomingRevenue,
 			InFlightRisk:    htlc.inFlightRisk,

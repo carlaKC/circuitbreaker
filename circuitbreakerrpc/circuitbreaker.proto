@@ -176,7 +176,7 @@ message ListReputationThresholdsResponse {
 message ReputationThreshold{
   string payment_hash = 1;
   uint64 forward_ts_ns = 2;
-  uint64 incoming_channel = 3;
+  CircuitKey incoming_circuit = 3;
   uint64 outgoing_channel = 4;
   double incoming_revenue = 5;
   double in_flight_risk = 6;

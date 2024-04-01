@@ -1495,7 +1495,15 @@ func (m *ReputationThreshold) Validate() error {
 
 	// no validation rules for ForwardTsNs
 
-	// no validation rules for IncomingChannel
+	if v, ok := interface{}(m.GetIncomingCircuit()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ReputationThresholdValidationError{
+				field:  "IncomingCircuit",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
 
 	// no validation rules for OutgoingChannel
 
