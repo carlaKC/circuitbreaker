@@ -22,10 +22,21 @@ RUN go install -ldflags "-X main.BuildVersion=$BUILD_VERSION"
 ### Build an Alpine image
 FROM alpine:3.16 as alpine
 
-# Update CA certs
-RUN apk add --no-cache ca-certificates && rm -rf /var/cache/apk/*
+# Update CA certs and install python for timestamp script
+RUN apk add --no-cache ca-certificates python3 && rm -rf /var/cache/apk/*
 
 # Copy over app binary
 COPY --from=build_backend /go/bin/circuitbreaker /usr/bin/circuitbreaker
 
-ENTRYPOINT [ "circuitbreaker" ]
+# Copy in historical reputation data and script to adjust it
+COPY historical_data/raw_data_csv /raw_data.csv
+COPY historical_data/progress_timestamps.py /progress_timestamps.py
+
+# Copy the entrypoint script into the container
+COPY entrypoint.sh /entrypoint.sh
+
+# Make the entrypoint script executable
+RUN chmod +x /entrypoint.sh
+
+# Set the entrypoint script to run when the container launches
+ENTRYPOINT ["/entrypoint.sh"]
