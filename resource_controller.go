@@ -95,8 +95,13 @@ func newResourceController(htlcCompleted htlcCompletedFunc,
 	channelMap := make(map[lnwire.ShortChannelID]lrc.ChannelInfo)
 	for chanID, channel := range channels {
 		channelMap[lnwire.NewShortChanIDFromInt(chanID)] = lrc.ChannelInfo{
-			InFlightHTLC:      uint64(channel.outgoingSlotLimit),
-			InFlightLiquidity: channel.outgoingLiquidityLimit,
+			InFlightHTLC: uint64(channel.outgoingSlotLimit),
+			// NBNBNB: LND doesn't currently implement the
+			// "oakland protocol" of setting the max in flight to
+			// 45% of your channel capacity, but it's a reasonable
+			// enough expectation that this will be used long term.
+			// So we limit our in-flight accordingly.
+			InFlightLiquidity: (channel.capacityMsat * 45) / 100,
 		}
 	}
 
