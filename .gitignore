@@ -1,3 +1,4 @@
 /circuitbreaker
 **/node_modules
 *.csv
+/historical_data/*.csv
