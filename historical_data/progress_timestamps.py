@@ -10,33 +10,23 @@ def progress_timestamps(csv_file: Path, outfile: Path):
         # Read the rest of the lines and process them
         csv_data = [line.strip().split(',') for line in f]
 
-    # Find the difference between the current time and the latest timestamp in the CSV and progress timestamps by that amount.
+    # Calculate time difference from the last timestamp in the file
     time_difference = get_time_difference(csv_data)
+
+    # Progress timestamps for each data point
     progress_timestamps_helper(csv_data, time_difference)
 
     # Write updated CSV data
     write_csv_data(headers, csv_data, outfile)
     print("CSV data updated and written to", outfile)
 
-def find_latest_timestamp(csv_data):
-    latest_timestamp = None
-    timestamp_indices = [2, 3, 6, 7]  # Indices of timestamp fields
-    for line in csv_data:
-        for index in timestamp_indices:
-            timestamp = int(line[index])
-            if latest_timestamp is None or timestamp > latest_timestamp:
-                latest_timestamp = timestamp
-    return latest_timestamp
-
 def progress_timestamps_helper(csv_data, time_difference):
     timestamp_indices = [2, 3, 6, 7]  # Indices of timestamp fields
-    current_time_ns = int(time.time_ns())
 
     for line in csv_data:
         for index in timestamp_indices:
             timestamp = int(line[index])
             updated_timestamp = timestamp + time_difference
-            updated_timestamp = max(updated_timestamp, current_time_ns)
             line[index] = str(updated_timestamp)
 
 def get_time_difference(csv_data):
@@ -49,6 +39,16 @@ def get_time_difference(csv_data):
     current_time_ns = int(time.time() * 1e9)
     time_difference = current_time_ns - latest_timestamp
     return time_difference
+
+def find_latest_timestamp(csv_data):
+    latest_timestamp = None
+    timestamp_indices = [2, 3, 6, 7]  # Indices of timestamp fields
+    for line in csv_data:
+        for index in timestamp_indices:
+            timestamp = int(line[index])
+            if latest_timestamp is None or timestamp > latest_timestamp:
+                latest_timestamp = timestamp
+    return latest_timestamp
 
 def write_csv_data(headers, csv_data, outfile):
     with open(outfile, 'w') as f:
