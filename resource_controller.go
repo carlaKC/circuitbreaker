@@ -90,7 +90,9 @@ func newResourceController(htlcCompleted htlcCompletedFunc,
 		chanHistory,
 		// Reserve 50% of resources for protected HTLCs.
 		50,
-		log,
+                log,
+                // Set 5 minute blocks to align with simulation.
+                5.0,
 	)
 	if err != nil {
 		return nil, err

@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/btcsuite/btcd/btcutil v1.1.4-0.20230904040416-d4f519f5dc05
-	github.com/carlakc/lrc v0.0.0-20240415190930-fa0e600d6361
+	github.com/carlakc/lrc v0.0.0-20240417185724-8d824ccb0ad9
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.15.1
 	github.com/lightningequipment/circuitbreaker/circuitbreakerrpc v0.0.0-00010101000000-000000000000
