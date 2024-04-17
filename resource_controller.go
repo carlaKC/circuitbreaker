@@ -72,13 +72,13 @@ func newResourceController(htlcCompleted htlcCompletedFunc,
 	htlcThreshold htlcThresholdFunc, chanHistory lrc.ChannelHistory,
 	channels map[uint64]*channel) (*resourceController, error) {
 
-        // For the attackathon we set our window to 2 hours so that we have an 
-        // achievable time target.
+	// For the attackathon we set our window to 2 hours so that we have an
+	// achievable time target.
 	revenueWindow := time.Hour
 
-        // Set our multiplier to *24 so that we have 48 hours to build 
-        // reputation, this is 2x what we allow in our proposal, but makes 
-        // reputation more achievable for the sake of time.
+	// Set our multiplier to *24 so that we have 48 hours to build
+	// reputation, this is 2x what we allow in our proposal, but makes
+	// reputation more achievable for the sake of time.
 	reputationMultiplier := 24
 
 	manager, err := lrc.NewReputationManager(
@@ -90,7 +90,7 @@ func newResourceController(htlcCompleted htlcCompletedFunc,
 		chanHistory,
 		// Reserve 50% of resources for protected HTLCs.
 		50,
-                log,
+		log,
 	)
 	if err != nil {
 		return nil, err
@@ -129,8 +129,13 @@ func (r *resourceController) process(ctx context.Context, event peerInterceptEve
 		return err
 	}
 
-	log.Infof("Resource Controller %v -> outgoing endorsed: %v",
-		event.interceptEvent, action.ForwardOutcome)
+	log.Infof("Resource Controller %v -> outgoing endorsed: %v "+
+		"(incoming revenue: %v - htlc risk: %v vs outgoing revenue: %v)",
+		event.interceptEvent, action.ForwardOutcome,
+		action.ReputationCheck.IncomingRevenue,
+		action.ReputationCheck.HTLCRisk,
+		action.ReputationCheck.OutgoingRevenue,
+	)
 
 	threshold := thresholdFromFwdDecision(
 		time.Now(), action, event.incomingCircuitKey,
