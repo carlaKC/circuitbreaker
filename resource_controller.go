@@ -72,11 +72,14 @@ func newResourceController(htlcCompleted htlcCompletedFunc,
 	htlcThreshold htlcThresholdFunc, chanHistory lrc.ChannelHistory,
 	channels map[uint64]*channel) (*resourceController, error) {
 
-	// Assess revenue over 2016 blocks, ~2 weeks.
-	revenueWindow := time.Hour * 24 * 14
+        // For the attackathon we set our window to 2 hours so that we have an 
+        // achievable time target.
+	revenueWindow := time.Hour
 
-	// Assess reputation over 20 weeks (10x revenue)
-	reputationMultiplier := 10
+        // Set our multiplier to *24 so that we have 48 hours to build 
+        // reputation, this is 2x what we allow in our proposal, but makes 
+        // reputation more achievable for the sake of time.
+	reputationMultiplier := 24
 
 	manager, err := lrc.NewReputationManager(
 		revenueWindow,
@@ -87,7 +90,7 @@ func newResourceController(htlcCompleted htlcCompletedFunc,
 		chanHistory,
 		// Reserve 50% of resources for protected HTLCs.
 		50,
-		log,
+                log,
 	)
 	if err != nil {
 		return nil, err
