@@ -90,9 +90,9 @@ func newResourceController(htlcCompleted htlcCompletedFunc,
 		chanHistory,
 		// Reserve 50% of resources for protected HTLCs.
 		50,
-                log,
-                // Set 5 minute blocks to align with simulation.
-                5.0,
+		log,
+		// Set 5 minute blocks to align with simulation.
+		5.0,
 	)
 	if err != nil {
 		return nil, err
@@ -200,7 +200,10 @@ func proposedHTLCFromIntercepted(i *interceptEvent) *lrc.ProposedHTLC {
 		IncomingEndorsed: i.endorsed,
 		IncomingAmount:   i.incomingMsat,
 		OutgoingAmount:   i.outgoingMsat,
-		CltvExpiryDelta:  i.cltvDelta,
+		// TODO: replace with actual difference between outgoing htlc
+		// and current height. Scaling this down for the sake of the
+		// attackathon.
+		CltvExpiryDelta: 1, //i.cltvDelta,
 	}
 }
 
