@@ -168,6 +168,10 @@ func (r *resourceController) resolved(ctx context.Context,
 	key peerResolvedEvent) error {
 
 	inFlight := r.ResolveHTLC(resolvedHTLCFromIntercepted(key.resolvedEvent))
+	if inFlight == nil {
+		log.Infof("Library could not resolve HTLC", key.resolvedEvent)
+		return nil
+	}
 
 	htlc := &HtlcInfo{
 		addTime:      inFlight.TimestampAdded,
