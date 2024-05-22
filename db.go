@@ -83,7 +83,7 @@ var migrations = &migrate.MemoryMigrationSource{
 			Id: "4",
 			Up: []string{
 				`CREATE TABLE IF NOT EXISTS reputation_thresholds (
-                                        payment_hash TEXT PRIMARY KEY NOT NULL,
+                                        payment_hash NOT NULL,
                                         forward_time TIMESTAMP NOT NULL,
                                         incoming_channel INTEGER NOT NULL,
                                         incoming_htlc_index UNSIGNED NOT NULL,
