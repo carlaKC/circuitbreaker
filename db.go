@@ -321,8 +321,13 @@ func (d *Db) insertHtlcResolution(ctx context.Context, htlc *HtlcInfo) error {
 		encodeEndorsed(htlc.outgoingEndorsed),
 		htlc.cltvDelta,
 	)
+	if err !=nil{
+                return fmt.Errorf("%w: %v(%v) -> %v(%v)", err,
+		htlc.incomingCircuit.channel, htlc.incomingCircuit.htlc,
+		htlc.outgoingCircuit.channel, htlc.outgoingCircuit.htlc)
+        }
 
-	return err
+        return nil
 }
 
 func encodeEndorsed(endorsed lrc.Endorsement) int {
