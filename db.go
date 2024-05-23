@@ -73,8 +73,7 @@ var migrations = &migrate.MemoryMigrationSource{
                                         outgoing_endorsed INTEGER, 
                                         cltv_delta INTEGER NOT NULL,
 
-                                        CONSTRAINT unique_incoming_circuit UNIQUE (incoming_channel, incoming_htlc_index),
-                                        CONSTRAINT unique_outgoing_circuit UNIQUE (outgoing_channel, outgoing_htlc_index)
+                                        CONSTRAINT unique_incoming_circuit UNIQUE (incoming_channel, incoming_htlc_index)
                                 );`,
 				`CREATE INDEX add_time_index ON forwarding_history (add_time);`,
 			},
