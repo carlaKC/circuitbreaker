@@ -207,7 +207,7 @@ func proposedHTLCFromIntercepted(i *interceptEvent) *lrc.ProposedHTLC {
 		// TODO: replace with actual difference between outgoing htlc
 		// and current height. Scaling this down for the sake of the
 		// attackathon.
-		CltvExpiryDelta: 1, //i.cltvDelta,
+		CltvExpiryDelta: i.outgoingExpiry,
 	}
 }
 

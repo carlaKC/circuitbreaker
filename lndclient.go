@@ -114,7 +114,8 @@ type interceptedEvent struct {
 	outgoingChannel    uint64
 	incomingMsat       lnwire.MilliSatoshi
 	outgoingMsat       lnwire.MilliSatoshi
-	cltvDelta          uint64
+	incomingExipry     uint32
+	outgoingExpiry     uint32
 	endorsed           lrc.Endorsement
 }
 
@@ -138,7 +139,8 @@ func (h *lndHtlcInterceptorClient) recv() (*interceptedEvent, error) {
 		outgoingChannel: event.OutgoingRequestedChanId,
 		incomingMsat:    lnwire.MilliSatoshi(event.IncomingAmountMsat),
 		outgoingMsat:    lnwire.MilliSatoshi(event.OutgoingAmountMsat),
-		cltvDelta:       uint64(event.IncomingExpiry) - uint64(event.OutgoingExpiry),
+		incomingExipry:  event.IncomingExpiry,
+		outgoingExpiry:  event.OutgoingExpiry,
 	}
 
 	switch event.Endorsed {

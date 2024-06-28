@@ -51,7 +51,7 @@ type interceptEvent struct {
 	outgoingChannel    uint64
 	incomingMsat       lnwire.MilliSatoshi
 	outgoingMsat       lnwire.MilliSatoshi
-	cltvDelta          uint32
+	outgoingExpiry     uint32
 	endorsed           lrc.Endorsement
 	resume             func(bool, lrc.Endorsement) error
 }
@@ -585,7 +585,7 @@ func (p *process) processInterceptor(ctx context.Context,
 			outgoingChannel:    event.outgoingChannel,
 			incomingMsat:       event.incomingMsat,
 			outgoingMsat:       event.outgoingMsat,
-			cltvDelta:          uint32(event.cltvDelta),
+			outgoingExpiry:     event.outgoingExpiry,
 			endorsed:           event.endorsed,
 			resume:             resume,
 		}:
