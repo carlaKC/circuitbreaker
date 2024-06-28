@@ -126,6 +126,7 @@ func NewProcess(client lndclient, log *zap.SugaredLogger,
 	}
 
 	resourceController, err := newResourceController(
+		client,
 		db.RecordHtlcResolution,
 		db.InsertThreshold,
 		chanHistoryFunc, channels,

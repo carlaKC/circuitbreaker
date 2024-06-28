@@ -247,6 +247,7 @@ type info struct {
 	nodeKey route.Vertex
 	alias   string
 	version string
+	height  uint32
 }
 
 func (l *lndclientGrpc) getInfo() (*info, error) {
@@ -267,6 +268,7 @@ func (l *lndclientGrpc) getInfo() (*info, error) {
 		nodeKey: nodeKey,
 		alias:   infoResp.Alias,
 		version: infoResp.Version,
+		height:  infoResp.BlockHeight,
 	}, nil
 }
 

@@ -19,9 +19,32 @@ var _ controller = (*resourceController)(nil)
 // endorsement and resource bucketing. This struct simply wraps an external
 // implementation in the controller interface.
 type resourceController struct {
+	lnd lndclient
+
+	// Caches our height so that we don't have to query it often.
+	height    uint32
+	heightAge time.Time
+
 	htlcCompleted htlcCompletedFunc
 	htlcThreshold htlcThresholdFunc
 	lrc.LocalResourceManager
+}
+
+// queries block height, caching values for 3 minutes.
+func (r *resourceController) getHeight() (uint32, error) {
+	if r.heightAge.Add(time.Minute*3).After(time.Now()) && r.height != 0 {
+		return r.height, nil
+	}
+
+	info, err := r.lnd.getInfo()
+	if err != nil {
+		return 0, err
+	}
+
+	r.height = info.height
+	r.heightAge = time.Now()
+
+	return r.height, nil
 }
 
 type htlcCompletedFunc func(context.Context, *HtlcInfo) error
@@ -68,7 +91,7 @@ func circuitbreakerToLRCHistory(htlcs []*HtlcInfo) []*lrc.ForwardedHTLC {
 // newResourceController creates a new resource controller, using default values. It
 // takes a set of previously forwarded htlcs and the node's known channels as parameters
 // to bootstrap the state of the manager.
-func newResourceController(htlcCompleted htlcCompletedFunc,
+func newResourceController(lnd lndclient, htlcCompleted htlcCompletedFunc,
 	htlcThreshold htlcThresholdFunc, chanHistory lrc.ChannelHistory,
 	channels map[uint64]*channel) (*resourceController, error) {
 
@@ -111,7 +134,15 @@ func newResourceController(htlcCompleted htlcCompletedFunc,
 		}
 	}
 
+	info, err := lnd.getInfo()
+	if err != nil {
+		return nil, err
+	}
+
 	return &resourceController{
+		lnd,
+		info.height,
+		time.Now(),
 		htlcCompleted,
 		htlcThreshold,
 		manager,
@@ -121,11 +152,15 @@ func newResourceController(htlcCompleted htlcCompletedFunc,
 func (r *resourceController) process(ctx context.Context, event peerInterceptEvent,
 	chanOut *channel) error {
 
-	action, err := r.ForwardHTLC(
-		proposedHTLCFromIntercepted(&event.interceptEvent), &lrc.ChannelInfo{
-			InFlightLiquidity: chanOut.outgoingLiquidityLimit,
-			InFlightHTLC:      uint64(chanOut.outgoingSlotLimit),
-		},
+	proposed, err := r.proposedHTLCFromIntercepted(&event.interceptEvent)
+	if err != nil {
+		return err
+	}
+
+	action, err := r.ForwardHTLC(proposed, &lrc.ChannelInfo{
+		InFlightLiquidity: chanOut.outgoingLiquidityLimit,
+		InFlightHTLC:      uint64(chanOut.outgoingSlotLimit),
+	},
 	)
 	if err != nil {
 		return err
@@ -192,7 +227,14 @@ func (r *resourceController) resolved(ctx context.Context,
 	return r.htlcCompleted(context.Background(), htlc)
 }
 
-func proposedHTLCFromIntercepted(i *interceptEvent) *lrc.ProposedHTLC {
+func (r *resourceController) proposedHTLCFromIntercepted(i *interceptEvent) (
+	*lrc.ProposedHTLC, error) {
+
+	height, err := r.getHeight()
+	if err != nil {
+		return nil, err
+	}
+
 	return &lrc.ProposedHTLC{
 		IncomingChannel: lnwire.NewShortChanIDFromInt(
 			i.incomingCircuitKey.channel,
@@ -204,11 +246,8 @@ func proposedHTLCFromIntercepted(i *interceptEvent) *lrc.ProposedHTLC {
 		IncomingEndorsed: i.endorsed,
 		IncomingAmount:   i.incomingMsat,
 		OutgoingAmount:   i.outgoingMsat,
-		// TODO: replace with actual difference between outgoing htlc
-		// and current height. Scaling this down for the sake of the
-		// attackathon.
-		CltvExpiryDelta: i.outgoingExpiry,
-	}
+		CltvExpiryDelta:  i.outgoingExpiry - height,
+	}, nil
 }
 
 func resolvedHTLCFromIntercepted(resolved resolvedEvent) *lrc.ResolvedHTLC {
