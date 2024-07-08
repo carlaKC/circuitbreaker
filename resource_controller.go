@@ -95,14 +95,13 @@ func newResourceController(lnd lndclient, htlcCompleted htlcCompletedFunc,
 	htlcThreshold htlcThresholdFunc, chanHistory lrc.ChannelHistory,
 	channels map[uint64]*channel) (*resourceController, error) {
 
-	// For the attackathon we set our window to 2 hours so that we have an
-	// achievable time target.
+	// For the attackathon, we set our revenue window to an hour so that
+	// we can reasonably build reputation in that time.
 	revenueWindow := time.Hour
 
-	// Set our multiplier to *24 so that we have 48 hours to build
-	// reputation, this is 2x what we allow in our proposal, but makes
-	// reputation more achievable for the sake of time.
-	reputationMultiplier := 24
+	// Set our reputation multiplier to *12, which is the same ratio used
+	// in our proposal.
+	reputationMultiplier := 12
 
 	manager, err := lrc.NewReputationManager(
 		revenueWindow,
@@ -230,10 +229,10 @@ func (r *resourceController) resolved(ctx context.Context,
 func (r *resourceController) proposedHTLCFromIntercepted(i *interceptEvent) (
 	*lrc.ProposedHTLC, error) {
 
-	height, err := r.getHeight()
+	/*height, err := r.getHeight()
 	if err != nil {
 		return nil, err
-	}
+	}*/
 
 	return &lrc.ProposedHTLC{
 		IncomingChannel: lnwire.NewShortChanIDFromInt(
@@ -246,7 +245,15 @@ func (r *resourceController) proposedHTLCFromIntercepted(i *interceptEvent) (
 		IncomingEndorsed: i.endorsed,
 		IncomingAmount:   i.incomingMsat,
 		OutgoingAmount:   i.outgoingMsat,
-		CltvExpiryDelta:  i.outgoingExpiry - height,
+		// The revenue window that we use is supposed to be set by the
+		// maximum time a HTLC can be held for (ie, 2016 blocks). But
+		// since we're reducing this window to make an attack easier (to
+		// one hour), we reduce the CLTV expiry reflect this - 60
+		// minutes with 5 minute blocks = 12). This is backwards (we
+		// should be setting the window according to this value, not the
+		// reverse), but we want to have HTLC costs which are
+		// proportionate to the window we're dealing with.
+		CltvExpiryDelta: 12, //i.outgoingExpiry - height,
 	}, nil
 }
 
