@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/btcsuite/btcd/btcutil v1.1.4-0.20230904040416-d4f519f5dc05
-	github.com/carlakc/lrc v0.0.0-20240419180845-b3b0c18e37db
+	github.com/carlakc/lrc v0.0.0-20240712204429-849fa3bcd8c5
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.15.1
 	github.com/lightningequipment/circuitbreaker/circuitbreakerrpc v0.0.0-00010101000000-000000000000
@@ -12,7 +12,7 @@ require (
 	github.com/lightningnetwork/lnd/clock v1.1.1
 	github.com/paulbellamy/ratecounter v0.2.0
 	github.com/rubenv/sql-migrate v1.2.0
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli v1.22.9
 	go.uber.org/zap v1.17.0
 	golang.org/x/sync v0.2.0
@@ -125,7 +125,7 @@ require (
 	github.com/sirupsen/logrus v1.9.2 // indirect
 	github.com/soheilhy/cmux v0.1.5 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/stretchr/objx v0.5.0 // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20201229170055-e5319fda7802 // indirect
 	github.com/ulikunitz/xz v0.5.11 // indirect

@@ -88,33 +88,56 @@ func circuitbreakerToLRCHistory(htlcs []*HtlcInfo) []*lrc.ForwardedHTLC {
 	return htlcList
 }
 
+type historyFunc func(channelID lnwire.ShortChannelID, incomingOnly bool) (
+	[]*lrc.ForwardedHTLC, error)
+
 // newResourceController creates a new resource controller, using default values. It
 // takes a set of previously forwarded htlcs and the node's known channels as parameters
 // to bootstrap the state of the manager.
 func newResourceController(lnd lndclient, htlcCompleted htlcCompletedFunc,
-	htlcThreshold htlcThresholdFunc, chanHistory lrc.ChannelHistory,
+	htlcThreshold htlcThresholdFunc, historyFunc historyFunc,
 	channels map[uint64]*channel) (*resourceController, error) {
 
-	// For the attackathon, we set our revenue window to an hour so that
-	// we can reasonably build reputation in that time.
-	revenueWindow := time.Hour
+	params := lrc.ManagerParams{
+		// We used reduced values (1h / 12h) with the same ratio as
+		// our proposal.
+		RevenueWindow:        time.Hour,
+		ReputationMultiplier: 12,
+		ProtectedPercentage:  50,
+		ResolutionPeriod:     time.Second * 90,
+		BlockTime:            5,
+	}
+	clock := clock.NewDefaultClock()
 
-	// Set our reputation multiplier to *12, which is the same ratio used
-	// in our proposal.
-	reputationMultiplier := 12
+	manager, err := lrc.NewResourceManager(
+		params, clock,
+		// Reputation bootstrap with incoming htlcs.
+		func(id lnwire.ShortChannelID) (*lrc.DecayingAverageStart,
+			error) {
 
-	manager, err := lrc.NewReputationManager(
-		revenueWindow,
-		reputationMultiplier,
-		// Expect HTLCs to resolve within 90 seconds.
-		time.Second*90,
-		clock.NewDefaultClock(),
-		chanHistory,
-		// Reserve 50% of resources for protected HTLCs.
-		50,
+			forwards, err := historyFunc(id, true)
+			if err != nil {
+				return nil, err
+			}
+
+			return lrc.BootstrapReputation(
+				id, params, forwards, clock,
+			)
+		},
+		// Revenue bootstrap with outgoing htlcs.
+		func(id lnwire.ShortChannelID) (*lrc.DecayingAverageStart,
+			error) {
+
+			forwards, err := historyFunc(id, false)
+			if err != nil {
+				return nil, err
+			}
+
+			return lrc.BootstrapRevenue(
+				id, params, forwards, clock,
+			)
+		},
 		log,
-		// Set 5 minute blocks to align with simulation.
-		5.0,
 	)
 	if err != nil {
 		return nil, err
@@ -201,10 +224,11 @@ func (r *resourceController) process(ctx context.Context, event peerInterceptEve
 func (r *resourceController) resolved(ctx context.Context,
 	key peerResolvedEvent) error {
 
-	inFlight := r.ResolveHTLC(resolvedHTLCFromIntercepted(key.resolvedEvent))
-	if inFlight == nil {
-		log.Infof("Library could not resolve HTLC", key.resolvedEvent)
-		return nil
+	inFlight, err := r.ResolveHTLC(
+		resolvedHTLCFromIntercepted(key.resolvedEvent),
+	)
+	if err != nil {
+		return err
 	}
 
 	htlc := &HtlcInfo{

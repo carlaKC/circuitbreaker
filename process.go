@@ -129,7 +129,8 @@ func NewProcess(client lndclient, log *zap.SugaredLogger,
 		client,
 		db.RecordHtlcResolution,
 		db.InsertThreshold,
-		chanHistoryFunc, channels,
+		chanHistoryFunc,
+		channels,
 	)
 	if err != nil {
 		return nil, err
