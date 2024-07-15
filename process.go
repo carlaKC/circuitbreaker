@@ -365,6 +365,12 @@ func (p *process) eventLoop(ctx context.Context, group *errgroup.Group) error {
 	for {
 		select {
 		case interceptEvent := <-p.interceptChan:
+			log.Debugf("Intercepted %v: %v(%v) -> %v",
+				interceptEvent.paymentHash,
+				interceptEvent.incomingCircuitKey.channel,
+				interceptEvent.incomingCircuitKey.htlc,
+				interceptEvent.outgoingChannel)
+
 			chanInfo, err := p.getChanInfo(
 				interceptEvent.incomingCircuitKey.channel,
 			)
@@ -390,6 +396,13 @@ func (p *process) eventLoop(ctx context.Context, group *errgroup.Group) error {
 			}
 
 		case resolvedEvent := <-p.resolveChan:
+			log.Debugf("Resolved settled=%v: %v(%v) -> %v(%v)",
+				resolvedEvent.settled,
+				resolvedEvent.incomingCircuitKey.channel,
+				resolvedEvent.incomingCircuitKey.htlc,
+				resolvedEvent.outgoingCircuitKey.channel,
+				resolvedEvent.outgoingCircuitKey.htlc)
+
 			chanInfo, err := p.getChanInfo(
 				resolvedEvent.incomingCircuitKey.channel,
 			)
