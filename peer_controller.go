@@ -454,11 +454,17 @@ func (p *peerController) markHtlcComplete(ctx context.Context, key circuitKey,
 		incomingMsat:    inFlight.incomingMsat,
 		outgoingMsat:    inFlight.outgoingMsat,
 		incomingCircuit: key,
-		outgoingCircuit: resolution.outgoingCircuitKey,
-		incomingPeer:    p.pubKey,
-		outgoingPeer:    *resolution.outgoingPeer,
+		outgoingCircuit: circuitKey{
+			channel: resolution.outgoingChannel,
+		},
+		incomingPeer: p.pubKey,
+		outgoingPeer: *resolution.outgoingPeer,
 		// Note: htlc endorsement and cltv are left out because we're
 		// not going to run in this mode.
+	}
+
+	if resolution.outgoingIndex != nil {
+		htlcInfo.outgoingCircuit.htlc = *resolution.outgoingIndex
 	}
 
 	if err := p.htlcCompleted(ctx, htlcInfo); err != nil {

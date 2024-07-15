@@ -195,3 +195,5 @@ replace google.golang.org/protobuf => github.com/lightninglabs/protobuf-go-hex-d
 
 // Point to LND on branch 7841-interceptor-custom-tlv which allows us to set endorsed HTLCs.
 replace github.com/lightningnetwork/lnd => github.com/carlakc/lnd v0.17.0-beta.rc3.0.20240117154733-294acee87453
+
+replace github.com/carlakc/lrc => /Users/carla/Work/lrc

@@ -238,13 +238,18 @@ func (r *resourceController) resolved(ctx context.Context,
 		incomingMsat: inFlight.IncomingAmount,
 		outgoingMsat: inFlight.OutgoingAmount,
 		// TODO: we don't care about this.
-		incomingPeer:     route.Vertex{},
-		outgoingPeer:     route.Vertex{},
-		incomingCircuit:  key.incomingCircuitKey,
-		outgoingCircuit:  key.outgoingCircuitKey,
+		incomingPeer:    route.Vertex{},
+		outgoingPeer:    route.Vertex{},
+		incomingCircuit: key.incomingCircuitKey,
+		outgoingCircuit: circuitKey{
+			channel: key.outgoingChannel,
+		},
 		incomingEndorsed: inFlight.IncomingEndorsed,
 		outgoingEndorsed: inFlight.OutgoingEndorsed,
 		cltvDelta:        inFlight.CltvExpiryDelta,
+	}
+	if key.outgoingIndex != nil {
+		htlc.outgoingCircuit.htlc = *key.outgoingIndex
 	}
 
 	return r.htlcCompleted(context.Background(), htlc)
@@ -288,8 +293,9 @@ func resolvedHTLCFromIntercepted(resolved resolvedEvent) *lrc.ResolvedHTLC {
 			resolved.incomingCircuitKey.channel,
 		),
 		OutgoingChannel: lnwire.NewShortChanIDFromInt(
-			resolved.outgoingCircuitKey.channel,
+			resolved.outgoingChannel,
 		),
+		OutgoingIndex:    resolved.outgoingIndex,
 		Success:          resolved.settled,
 		TimestampSettled: resolved.timestamp,
 	}

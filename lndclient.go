@@ -60,12 +60,18 @@ func (h *lndHtlcEventsClient) recvInternal() (*resolvedEvent, error) {
 		return nil, nil
 	}
 
-	var settled bool
+	var (
+		settled     bool
+		outgoingIdx *uint64
+	)
+
 	switch event.Event.(type) {
 	case *routerrpc.HtlcEvent_SettleEvent:
 		settled = true
 
 	case *routerrpc.HtlcEvent_ForwardFailEvent:
+		outgoingIdx = &event.OutgoingHtlcId
+
 	case *routerrpc.HtlcEvent_LinkFailEvent:
 
 	default:
@@ -78,11 +84,9 @@ func (h *lndHtlcEventsClient) recvInternal() (*resolvedEvent, error) {
 			channel: event.IncomingChannelId,
 			htlc:    event.IncomingHtlcId,
 		},
-		outgoingCircuitKey: circuitKey{
-			channel: event.OutgoingChannelId,
-			htlc:    event.OutgoingHtlcId,
-		},
-		timestamp: time.Unix(0, int64(event.TimestampNs)),
+		outgoingChannel: event.OutgoingChannelId,
+		outgoingIndex:   outgoingIdx,
+		timestamp:       time.Unix(0, int64(event.TimestampNs)),
 	}, nil
 }
 

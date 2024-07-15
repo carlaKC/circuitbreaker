@@ -188,7 +188,8 @@ func (s *stubLndClient) resolveHtlc(ctx context.Context, resp *interceptResponse
 			incomingCircuitKey: resp.key,
 			settled:            false,
 			timestamp:          time.Now(),
-			outgoingCircuitKey: inFlight.keyOut,
+			outgoingChannel:    inFlight.keyOut.channel,
+			outgoingIndex:      &inFlight.keyOut.htlc,
 		}:
 		case <-ctx.Done():
 			return
@@ -226,7 +227,8 @@ func (s *stubLndClient) resolveHtlc(ctx context.Context, resp *interceptResponse
 	select {
 	case s.eventChan <- &resolvedEvent{
 		incomingCircuitKey: resp.key,
-		outgoingCircuitKey: inFlight.keyOut,
+		outgoingChannel:    inFlight.keyOut.channel,
+		outgoingIndex:      &inFlight.keyOut.htlc,
 		settled:            settled,
 		timestamp:          time.Now(),
 	}:

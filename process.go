@@ -65,7 +65,8 @@ func (i interceptEvent) String() string {
 
 type resolvedEvent struct {
 	incomingCircuitKey circuitKey
-	outgoingCircuitKey circuitKey
+	outgoingChannel    uint64
+	outgoingIndex      *uint64
 	settled            bool
 	timestamp          time.Time
 }
@@ -411,12 +412,12 @@ func (p *process) eventLoop(ctx context.Context, group *errgroup.Group) error {
 			// does exist and should be found.
 			var outgoingPeer *route.Vertex
 			chanInfo, err = p.getChanInfo(
-				resolvedEvent.outgoingCircuitKey.channel,
+				resolvedEvent.outgoingChannel,
 			)
 			switch {
 			case errors.Is(err, errChannelNotFound) && !resolvedEvent.settled:
 				log.Debugf("Channel not found for failed htlc: %v",
-					resolvedEvent.outgoingCircuitKey.channel)
+					resolvedEvent.outgoingChannel)
 
 			case err != nil:
 				return err
