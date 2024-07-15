@@ -80,6 +80,7 @@ func circuitbreakerToLRCHistory(htlcs []*HtlcInfo) []*lrc.ForwardedHTLC {
 				IncomingIndex:    int(htlc.incomingCircuit.htlc),
 				IncomingChannel:  incomingChannel,
 				OutgoingChannel:  outgoingChannel,
+				OutgoingIndex:    int(htlc.outgoingCircuit.htlc),
 				Success:          htlc.settled,
 			},
 		}
@@ -287,6 +288,7 @@ func resolvedHTLCFromIntercepted(resolved resolvedEvent) *lrc.ResolvedHTLC {
 		IncomingChannel: lnwire.NewShortChanIDFromInt(
 			resolved.incomingCircuitKey.channel,
 		),
+		OutgoingIndex: int(resolved.outgoingCircuitKey.htlc),
 		OutgoingChannel: lnwire.NewShortChanIDFromInt(
 			resolved.outgoingCircuitKey.channel,
 		),
