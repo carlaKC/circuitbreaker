@@ -195,10 +195,12 @@ func (r *resourceController) process(ctx context.Context, event peerInterceptEve
 	}
 
 	log.Infof("Resource Controller %v -> outgoing endorsed: %v "+
-		"(incoming revenue: %v - htlc risk: %v vs outgoing revenue: %v)",
+		"(incoming revenue: %v - htlc risk: %v - in flight risk: %v "+
+		"vs outgoing revenue: %v)",
 		event.interceptEvent, action.ForwardOutcome,
 		action.ReputationCheck.IncomingRevenue,
 		action.ReputationCheck.HTLCRisk,
+		action.ReputationCheck.InFlightRisk,
 		action.ReputationCheck.OutgoingRevenue,
 	)
 
