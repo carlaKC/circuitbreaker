@@ -61,10 +61,15 @@ func circuitbreakerToLRCHistory(htlcs []*HtlcInfo) []*lrc.ForwardedHTLC {
 			htlc.outgoingCircuit.channel,
 		)
 
+		outgoingDecision := lrc.ForwardOutcomeUnendorsed
+		if htlc.outgoingEndorsed == lrc.EndorsementTrue {
+			outgoingDecision = lrc.ForwardOutcomeEndorsed
+		}
+
 		htlcList[i] = &lrc.ForwardedHTLC{
 			InFlightHTLC: lrc.InFlightHTLC{
 				TimestampAdded:   htlc.addTime,
-				OutgoingEndorsed: htlc.outgoingEndorsed,
+				OutgoingDecision: outgoingDecision,
 				ProposedHTLC: &lrc.ProposedHTLC{
 					IncomingChannel:  incomingChannel,
 					OutgoingChannel:  outgoingChannel,
@@ -232,6 +237,11 @@ func (r *resourceController) resolved(ctx context.Context,
 		return err
 	}
 
+	outgoingEndorsed := lrc.EndorsementTrue
+	if inFlight.OutgoingDecision != lrc.ForwardOutcomeEndorsed {
+		outgoingEndorsed = lrc.EndorsementFalse
+	}
+
 	htlc := &HtlcInfo{
 		addTime:      inFlight.TimestampAdded,
 		resolveTime:  time.Now(),
@@ -244,7 +254,7 @@ func (r *resourceController) resolved(ctx context.Context,
 		incomingCircuit:  key.incomingCircuitKey,
 		outgoingCircuit:  key.outgoingCircuitKey,
 		incomingEndorsed: inFlight.IncomingEndorsed,
-		outgoingEndorsed: inFlight.OutgoingEndorsed,
+		outgoingEndorsed: outgoingEndorsed,
 		cltvDelta:        inFlight.CltvExpiryDelta,
 	}
 
