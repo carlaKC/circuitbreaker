@@ -290,7 +290,7 @@ func (r *resourceController) proposedHTLCFromIntercepted(i *interceptEvent) (
 		// should be setting the window according to this value, not the
 		// reverse), but we want to have HTLC costs which are
 		// proportionate to the window we're dealing with.
-		CltvExpiryDelta: 12, //i.outgoingExpiry - height,
+		CltvExpiryDelta: 1, //i.outgoingExpiry - height,
 	}, nil
 }
 
