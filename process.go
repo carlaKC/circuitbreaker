@@ -57,7 +57,7 @@ type interceptEvent struct {
 }
 
 func (i interceptEvent) String() string {
-	return fmt.Sprintf("incoming htlc endorsed: %v, amount out: %v with "+
+	return fmt.Sprintf("incoming %v, amount out: %v with "+
 		"fee: %v (%v -> %v)",
 		i.endorsed, i.outgoingMsat, i.incomingMsat-i.outgoingMsat,
 		i.incomingCircuitKey.channel, i.outgoingChannel)
@@ -112,11 +112,12 @@ func NewProcess(client lndclient, log *zap.SugaredLogger,
 		return nil, err
 	}
 
-	chanHistoryFunc := func(id lnwire.ShortChannelID,
-		incomingOnly bool) ([]*lrc.ForwardedHTLC, error) {
+	chanHistoryFunc := func(id lnwire.ShortChannelID) ([]*lrc.ForwardedHTLC,
+		error) {
 
+		// Always get all history.
 		htlcs, err := db.ListChannelHistory(
-			context.Background(), id, incomingOnly,
+			context.Background(), id, false,
 		)
 		if err != nil {
 			return nil, err
@@ -391,16 +392,20 @@ func (p *process) eventLoop(ctx context.Context, group *errgroup.Group) error {
 				interceptEvent: interceptEvent,
 				peerInitiated:  !chanInfo.initiator,
 			}
-			if err := ctrl.process(ctx, peerEvent, chanOut); err != nil {
+			if err := ctrl.process(ctx, peerEvent, chanInfo, chanOut); err != nil {
 				return err
 			}
 
 		case resolvedEvent := <-p.resolveChan:
 			log.Debugf("Resolved settled=%v: %v(%v) -> %v(%v)",
 				resolvedEvent.settled,
-				resolvedEvent.incomingCircuitKey.channel,
+				lnwire.NewShortChanIDFromInt(
+					resolvedEvent.incomingCircuitKey.channel,
+				),
 				resolvedEvent.incomingCircuitKey.htlc,
-				resolvedEvent.outgoingCircuitKey.channel,
+				lnwire.NewShortChanIDFromInt(
+					resolvedEvent.outgoingCircuitKey.channel,
+				),
 				resolvedEvent.outgoingCircuitKey.htlc)
 
 			chanInfo, err := p.getChanInfo(

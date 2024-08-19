@@ -4,7 +4,7 @@ import "context"
 
 type controller interface {
 	process(ctx context.Context, event peerInterceptEvent,
-		chanOut *channel) error
+		chainIn, chanOut *channel) error
 
 	resolved(ctx context.Context, key peerResolvedEvent) error
 }

@@ -499,7 +499,7 @@ func (p *peerController) forward(event interceptEvent) error {
 }
 
 func (p *peerController) process(ctx context.Context,
-	event peerInterceptEvent, _ *channel) error {
+	event peerInterceptEvent, _, _ *channel) error {
 
 	select {
 	case p.interceptChan <- event:

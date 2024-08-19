@@ -94,8 +94,8 @@ func circuitbreakerToLRCHistory(htlcs []*HtlcInfo) []*lrc.ForwardedHTLC {
 	return htlcList
 }
 
-type historyFunc func(channelID lnwire.ShortChannelID, incomingOnly bool) (
-	[]*lrc.ForwardedHTLC, error)
+type historyFunc func(channelID lnwire.ShortChannelID) ([]*lrc.ForwardedHTLC,
+	error)
 
 // newResourceController creates a new resource controller, using default values. It
 // takes a set of previously forwarded htlcs and the node's known channels as parameters
@@ -118,28 +118,15 @@ func newResourceController(lnd lndclient, htlcCompleted htlcCompletedFunc,
 	manager, err := lrc.NewResourceManager(
 		params, clock,
 		// Reputation bootstrap with incoming htlcs.
-		func(id lnwire.ShortChannelID) (*lrc.DecayingAverageStart,
+		func(id lnwire.ShortChannelID) (*lrc.ChannelHistory,
 			error) {
 
-			forwards, err := historyFunc(id, true)
+			forwards, err := historyFunc(id)
 			if err != nil {
 				return nil, err
 			}
 
-			return lrc.BootstrapReputation(
-				id, params, forwards, clock,
-			)
-		},
-		// Revenue bootstrap with outgoing htlcs.
-		func(id lnwire.ShortChannelID) (*lrc.DecayingAverageStart,
-			error) {
-
-			forwards, err := historyFunc(id, false)
-			if err != nil {
-				return nil, err
-			}
-
-			return lrc.BootstrapRevenue(
+			return lrc.BootstrapHistory(
 				id, params, forwards, clock,
 			)
 		},
@@ -178,31 +165,30 @@ func newResourceController(lnd lndclient, htlcCompleted htlcCompletedFunc,
 }
 
 func (r *resourceController) process(ctx context.Context, event peerInterceptEvent,
-	chanOut *channel) error {
+	chanIn, chanOut *channel) error {
 
 	proposed, err := r.proposedHTLCFromIntercepted(&event.interceptEvent)
 	if err != nil {
 		return err
 	}
 
-	action, err := r.ForwardHTLC(proposed, &lrc.ChannelInfo{
-		InFlightLiquidity: chanOut.outgoingLiquidityLimit,
-		InFlightHTLC:      uint64(chanOut.outgoingSlotLimit),
-	},
+	action, err := r.ForwardHTLC(proposed,
+		lrc.ChannelInfo{
+			InFlightLiquidity: chanIn.outgoingLiquidityLimit,
+			InFlightHTLC:      uint64(chanIn.outgoingSlotLimit),
+		},
+		lrc.ChannelInfo{
+			InFlightLiquidity: chanOut.outgoingLiquidityLimit,
+			InFlightHTLC:      uint64(chanOut.outgoingSlotLimit),
+		},
 	)
 	if err != nil {
 		return err
 	}
 
-	log.Infof("Resource Controller %v -> outgoing endorsed: %v "+
-		"(incoming revenue: %v - htlc risk: %v - in flight risk: %v "+
-		"vs outgoing revenue: %v)",
-		event.interceptEvent, action.ForwardOutcome,
-		action.ReputationCheck.IncomingRevenue,
-		action.ReputationCheck.HTLCRisk,
-		action.ReputationCheck.InFlightRisk,
-		action.ReputationCheck.OutgoingRevenue,
-	)
+	log.Infof("Forwarded: %v for HTLC: %v",
+		action.ForwardOutcome, event.interceptEvent)
+	log.Infof("%v", action.ReputationCheck)
 
 	threshold := thresholdFromFwdDecision(
 		time.Now(), action, event.incomingCircuitKey,
@@ -219,7 +205,7 @@ func (r *resourceController) process(ctx context.Context, event peerInterceptEve
 	case lrc.ForwardOutcomeUnendorsed:
 		event.resume(true, lrc.EndorsementFalse)
 
-	case lrc.ForwardOutcomeNoResources:
+	case lrc.ForwardOutcomeNoResources, lrc.ForwardOutcomeOutgoingUnkonwn:
 		event.resume(false, lrc.EndorsementNone)
 
 	default:
@@ -317,10 +303,11 @@ func thresholdFromFwdDecision(ts time.Time, fwd *lrc.ForwardDecision,
 		forwardTs:       ts,
 		incomingCircuit: chanIn,
 		outgoingChannel: chanOut,
-		incomingRevenue: fwd.ReputationCheck.IncomingRevenue,
-		inFlightRisk:    fwd.ReputationCheck.InFlightRisk,
+		incomingRevenue: fwd.ReputationCheck.IncomingChannel.Revenue,
+		inFlightRisk:    fwd.ReputationCheck.IncomingChannel.InFlightRisk,
 		htlcRisk:        fwd.ReputationCheck.HTLCRisk,
-		outgoingRevenue: fwd.ReputationCheck.OutgoingRevenue,
-		outcome:         fwd.ForwardOutcome,
+		outgoingRevenue: fwd.ReputationCheck.OutgoingChannel.Revenue,
+		// TODO: Add outgoing direction
+		outcome: fwd.ForwardOutcome,
 	}
 }
