@@ -105,10 +105,11 @@ func newResourceController(lnd lndclient, htlcCompleted htlcCompletedFunc,
 	channels map[uint64]*channel) (*resourceController, error) {
 
 	params := lrc.ManagerParams{
-		// We used reduced values (1h / 12h) with the same ratio as
-		// our proposal.
-		RevenueWindow:        time.Hour,
-		ReputationMultiplier: 12,
+		// Revenue window is two weeks.
+		RevenueWindow: time.Hour * 24 * 14,
+		// Reputation multiplier is 24, to allow ~1 year to build
+		// reputation.
+		ReputationMultiplier: 24,
 		ProtectedPercentage:  50,
 		ResolutionPeriod:     time.Second * 90,
 		BlockTime:            5,
@@ -252,10 +253,10 @@ func (r *resourceController) resolved(ctx context.Context,
 func (r *resourceController) proposedHTLCFromIntercepted(i *interceptEvent) (
 	*lrc.ProposedHTLC, error) {
 
-	/*height, err := r.getHeight()
+	height, err := r.getHeight()
 	if err != nil {
 		return nil, err
-	}*/
+	}
 
 	return &lrc.ProposedHTLC{
 		IncomingChannel: lnwire.NewShortChanIDFromInt(
@@ -268,15 +269,7 @@ func (r *resourceController) proposedHTLCFromIntercepted(i *interceptEvent) (
 		IncomingEndorsed: i.endorsed,
 		IncomingAmount:   i.incomingMsat,
 		OutgoingAmount:   i.outgoingMsat,
-		// The revenue window that we use is supposed to be set by the
-		// maximum time a HTLC can be held for (ie, 2016 blocks). But
-		// since we're reducing this window to make an attack easier (to
-		// one hour), we reduce the CLTV expiry reflect this - 60
-		// minutes with 5 minute blocks = 12). This is backwards (we
-		// should be setting the window according to this value, not the
-		// reverse), but we want to have HTLC costs which are
-		// proportionate to the window we're dealing with.
-		CltvExpiryDelta: 1, //i.outgoingExpiry - height,
+		CltvExpiryDelta:  i.outgoingExpiry - height,
 	}, nil
 }
 
