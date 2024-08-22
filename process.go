@@ -60,7 +60,8 @@ func (i interceptEvent) String() string {
 	return fmt.Sprintf("incoming %v, amount out: %v with "+
 		"fee: %v (%v -> %v)",
 		i.endorsed, i.outgoingMsat, i.incomingMsat-i.outgoingMsat,
-		i.incomingCircuitKey.channel, i.outgoingChannel)
+		lnwire.NewShortChanIDFromInt(i.incomingCircuitKey.channel),
+		lnwire.NewShortChanIDFromInt(i.outgoingChannel))
 }
 
 type resolvedEvent struct {

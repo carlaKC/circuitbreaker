@@ -298,7 +298,7 @@ func thresholdFromFwdDecision(ts time.Time, fwd *lrc.ForwardDecision,
 		outgoingChannel: chanOut,
 		incomingRevenue: fwd.ReputationCheck.IncomingChannel.Revenue,
 		inFlightRisk:    fwd.ReputationCheck.IncomingChannel.InFlightRisk,
-		htlcRisk:        fwd.ReputationCheck.HTLCRisk,
+		htlcRisk:        fwd.ReputationCheck.OutgoingChannel.HTLCRisk,
 		outgoingRevenue: fwd.ReputationCheck.OutgoingChannel.Revenue,
 		// TODO: Add outgoing direction
 		outcome: fwd.ForwardOutcome,
