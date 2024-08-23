@@ -126,6 +126,12 @@ github.com/carlakc/lnd v0.17.0-beta.rc3.0.20240117154733-294acee87453 h1:2IhPHX5
 github.com/carlakc/lnd v0.17.0-beta.rc3.0.20240117154733-294acee87453/go.mod h1:/GZW6PBvMBhlVQVneLUyn4lWdfFcQGuFiW/Fju3tS7g=
 github.com/carlakc/lrc v0.0.0-20240823155700-909d18144c26 h1:oEFr5ggFZNP54CXP9/EEdt3EWep3QqrCE614yTqbu9s=
 github.com/carlakc/lrc v0.0.0-20240823155700-909d18144c26/go.mod h1:3HEj4Y0fi6o9waJwJABPcgUXBFebNwpAyioFh7peJ1U=
+github.com/carlakc/lrc v0.0.0-20240823183950-a4f5defb5094 h1:oeV0G12aBGkwHS+8Af+AiWpPORlnQWytRa35tzVu/3U=
+github.com/carlakc/lrc v0.0.0-20240823183950-a4f5defb5094/go.mod h1:3HEj4Y0fi6o9waJwJABPcgUXBFebNwpAyioFh7peJ1U=
+github.com/carlakc/lrc v0.0.0-20240823192312-43bfea8e1877 h1:R0jT9FN+zPEWf6EB1spKpwKFvzCfXSdDUvR50H4JUcc=
+github.com/carlakc/lrc v0.0.0-20240823192312-43bfea8e1877/go.mod h1:3HEj4Y0fi6o9waJwJABPcgUXBFebNwpAyioFh7peJ1U=
+github.com/carlakc/lrc v0.0.0-20240910185106-15378232f0dd h1:qpNK9oBDp9i+7DIO1u9sa/rbCtKyI4l9YrR8Rlm8bNY=
+github.com/carlakc/lrc v0.0.0-20240910185106-15378232f0dd/go.mod h1:3HEj4Y0fi6o9waJwJABPcgUXBFebNwpAyioFh7peJ1U=
 github.com/cenkalti/backoff/v4 v4.1.1/go.mod h1:scbssz8iZGpm3xbr14ovlUdkxfGXNInqkPWOWmG2CLw=
 github.com/cenkalti/backoff/v4 v4.1.2/go.mod h1:scbssz8iZGpm3xbr14ovlUdkxfGXNInqkPWOWmG2CLw=
 github.com/cenkalti/backoff/v4 v4.1.3 h1:cFAlzYUlVYDysBEH2T5hyJZMh3+5+WCBvSnK6Q8UtC4=
