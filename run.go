@@ -2,11 +2,9 @@ package main
 
 import (
 	"context"
-	"embed"
 	"encoding/csv"
 	"errors"
 	"fmt"
-	"io/fs"
 	"math"
 	"net"
 	"net/http"
@@ -38,9 +36,6 @@ var errUserExit = errors.New("user requested termination")
 // store in the database, as this is the largest query we currently make (~13 MB of data)
 // plus some leeway for nodes that override this default to a larger value.
 const maxGrpcMsgSize = 32 * 1024 * 1024
-
-//go:embed all:webui-build
-var content embed.FS
 
 func run(c *cli.Context) error {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -169,15 +164,8 @@ func run(c *cli.Context) error {
 		return err
 	}
 
-	serverRoot, err := fs.Sub(content, "webui-build")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fs := http.FileServer(http.FS(serverRoot))
 	mux := http.NewServeMux()
 	mux.Handle("/api/", http.StripPrefix("/api", gwmux))
-	mux.HandleFunc("/", fs.ServeHTTP)
 
 	httpListen := c.String(httpListenFlag.Name)
 	gwServer := &http.Server{
