@@ -140,6 +140,8 @@ github.com/carlakc/lrc v0.0.0-20240912150511-62dd5b339b79 h1:Stwy+NGrsoEFFy6DtGy
 github.com/carlakc/lrc v0.0.0-20240912150511-62dd5b339b79/go.mod h1:3HEj4Y0fi6o9waJwJABPcgUXBFebNwpAyioFh7peJ1U=
 github.com/carlakc/lrc v0.0.0-20240914101143-2542921931cd h1:A8EcwpUGi6DiVd+nKD4SOnooASQ1czOvXMBzBeutFBI=
 github.com/carlakc/lrc v0.0.0-20240914101143-2542921931cd/go.mod h1:3HEj4Y0fi6o9waJwJABPcgUXBFebNwpAyioFh7peJ1U=
+github.com/carlakc/lrc v0.0.0-20240914104126-1789e68b4a07 h1:W0aspIboIxTgFoVJKJ7r6Iwvi1Sz4GU23Mt0fwRs02g=
+github.com/carlakc/lrc v0.0.0-20240914104126-1789e68b4a07/go.mod h1:3HEj4Y0fi6o9waJwJABPcgUXBFebNwpAyioFh7peJ1U=
 github.com/cenkalti/backoff/v4 v4.1.1/go.mod h1:scbssz8iZGpm3xbr14ovlUdkxfGXNInqkPWOWmG2CLw=
 github.com/cenkalti/backoff/v4 v4.1.2/go.mod h1:scbssz8iZGpm3xbr14ovlUdkxfGXNInqkPWOWmG2CLw=
 github.com/cenkalti/backoff/v4 v4.1.3 h1:cFAlzYUlVYDysBEH2T5hyJZMh3+5+WCBvSnK6Q8UtC4=
