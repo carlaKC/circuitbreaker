@@ -138,6 +138,10 @@ func main() {
 			Usage: "limit the number of htlc forwards that are persisted",
 			Value: defaultFwdHistoryLimit,
 		},
+		cli.BoolFlag{
+			Name:  "jamgeneral",
+			Usage: "set to operate as if all general resources are consumed",
+		},
 		httpListenFlag,
 		stubFlag,
 	}

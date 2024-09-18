@@ -102,7 +102,8 @@ type historyFunc func(channelID lnwire.ShortChannelID) ([]*lrc.ForwardedHTLC,
 // to bootstrap the state of the manager.
 func newResourceController(lnd lndclient, htlcCompleted htlcCompletedFunc,
 	htlcThreshold htlcThresholdFunc, historyFunc historyFunc,
-	channels map[uint64]*channel) (*resourceController, error) {
+	channels map[uint64]*channel, jamGeneral bool) (*resourceController,
+        error) {
 
 	params := lrc.ManagerParams{
 		// Revenue window is two weeks.
@@ -113,6 +114,7 @@ func newResourceController(lnd lndclient, htlcCompleted htlcCompletedFunc,
 		ProtectedPercentage:  50,
 		ResolutionPeriod:     time.Second * 90,
 		BlockTime:            5,
+                JamGeneral: jamGeneral,
 	}
 	clock := clock.NewDefaultClock()
 

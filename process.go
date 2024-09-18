@@ -105,7 +105,7 @@ type process struct {
 }
 
 func NewProcess(client lndclient, log *zap.SugaredLogger,
-	limits *Limits, db *Db) (*process, error) {
+	limits *Limits, db *Db, jamGeneral bool) (*process, error) {
 
 	// TODO: include closed channels in bootstrap.
 	channels, err := client.listChannels()
@@ -133,6 +133,7 @@ func NewProcess(client lndclient, log *zap.SugaredLogger,
 		db.InsertThreshold,
 		chanHistoryFunc,
 		channels,
+                jamGeneral,
 	)
 	if err != nil {
 		return nil, err
