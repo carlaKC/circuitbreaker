@@ -21,7 +21,7 @@ RUN apk add --no-cache ca-certificates python3 && rm -rf /var/cache/apk/*
 COPY --from=build_backend /usr/bin/circuitbreaker /usr/bin/circuitbreaker
 
 # Copy in historical reputation data and script to adjust it
-COPY historical_data/raw_data_csv /raw_data.csv
+COPY historical_data/raw_data_csv /data.csv
 
 # Copy the entrypoint script into the container
 COPY entrypoint.sh /entrypoint.sh
