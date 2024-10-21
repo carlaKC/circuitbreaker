@@ -105,7 +105,8 @@ type process struct {
 }
 
 func NewProcess(client lndclient, log *zap.SugaredLogger,
-	limits *Limits, db *Db, jamGeneral bool) (*process, error) {
+	limits *Limits, db *Db, jamGeneral bool, history Reputations) (*process,
+	error) {
 
 	// TODO: include closed channels in bootstrap.
 	channels, err := client.listChannels()
@@ -113,25 +114,11 @@ func NewProcess(client lndclient, log *zap.SugaredLogger,
 		return nil, err
 	}
 
-	chanHistoryFunc := func(id lnwire.ShortChannelID) ([]*lrc.ForwardedHTLC,
-		error) {
-
-		// Always get all history.
-		htlcs, err := db.ListChannelHistory(
-			context.Background(), id, false,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		return circuitbreakerToLRCHistory(htlcs), nil
-	}
-
 	resourceController, err := newResourceController(
 		client,
 		db.RecordHtlcResolution,
 		db.InsertThreshold,
-		chanHistoryFunc,
+		history,
 		channels,
 		jamGeneral,
 	)

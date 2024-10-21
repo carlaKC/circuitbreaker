@@ -118,7 +118,9 @@ func run(c *cli.Context) error {
 		return err
 	}
 
-	p, err := NewProcess(client, log, limits, db, c.Bool("jamgeneral"))
+	p, err := NewProcess(
+		client, log, limits, db, c.Bool("jamgeneral"), history,
+	)
 	if err != nil {
 		return err
 	}

@@ -94,14 +94,11 @@ func circuitbreakerToLRCHistory(htlcs []*HtlcInfo) []*lrc.ForwardedHTLC {
 	return htlcList
 }
 
-type historyFunc func(channelID lnwire.ShortChannelID) ([]*lrc.ForwardedHTLC,
-	error)
-
 // newResourceController creates a new resource controller, using default values. It
 // takes a set of previously forwarded htlcs and the node's known channels as parameters
 // to bootstrap the state of the manager.
 func newResourceController(lnd lndclient, htlcCompleted htlcCompletedFunc,
-	htlcThreshold htlcThresholdFunc, historyFunc historyFunc,
+	htlcThreshold htlcThresholdFunc, history Reputations,
 	channels map[uint64]*channel, jamGeneral bool) (*resourceController,
 	error) {
 
@@ -128,14 +125,14 @@ func newResourceController(lnd lndclient, htlcCompleted htlcCompletedFunc,
 		func(id lnwire.ShortChannelID) (*lrc.ChannelHistory,
 			error) {
 
-			forwards, err := historyFunc(id)
-			if err != nil {
-				return nil, err
+			// Provide empty but non-nil history if channel has
+			// no history.
+			history, ok := history[id]
+			if !ok {
+				return &lrc.ChannelHistory{}, nil
 			}
 
-			return lrc.BootstrapHistory(
-				id, params, forwards, clock,
-			)
+			return &history, nil
 		},
 		log,
 	)
