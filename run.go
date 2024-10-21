@@ -340,7 +340,7 @@ func loadHistoricalForwards(ctx context.Context, path string, db *Db,
 
 		outgoingScid := lnwire.NewShortChanIDFromInt(uint64(chanOut))
 		outgoingHistory, _ := resp[outgoingScid]
-		outgoingHistory.IncomingReputation = &lrc.DecayingAverageStart{
+		outgoingHistory.OutgoingReputation = &lrc.DecayingAverageStart{
 			LastUpdate: time.Unix(0, reputationOutNS),
 			Value:      reputationOut,
 		}
