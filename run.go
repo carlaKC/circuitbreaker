@@ -5,7 +5,6 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
-	"math"
 	"net"
 	"net/http"
 	"os"
@@ -97,15 +96,17 @@ func run(c *cli.Context) error {
 
 	// Load historical forwards if found.
 	loadHist := c.String("loadhist")
+	var history Reputations
 	if loadHist != "" {
 		info, err := client.getInfo()
 		if err != nil {
 			return err
 		}
 
-		if err = loadHistoricalForwards(
+		history, err = loadHistoricalForwards(
 			ctx, loadHist, db, info.alias,
-		); err != nil {
+		)
+		if err != nil {
 			return err
 		}
 	} else {
@@ -235,107 +236,124 @@ func run(c *cli.Context) error {
 
 // read sim-ln generated CSV file of historical forwards into db.
 func loadHistoricalForwards(ctx context.Context, path string, db *Db,
-	alias string) error {
+	alias string) (Reputations, error) {
 
 	log.Infof("Loading historical forwards from: %v.", path)
 
 	file, err := os.Open(path)
 	if err != nil {
-		return err
+		return Reputations{}, err
 	}
 	defer file.Close()
 
 	rows, err := csv.NewReader(file).ReadAll()
 	if err != nil {
-		return err
+		return Reputations{}, err
 	}
 
 	// We're loading in historical HTLCs, but we also want to allow
 	// regular operation of the channel (and we require unique index for
 	// our db) so we start with an index that we won't hit for real
 	// forwards once circuitbreaker starts running.
-	var startIdx uint64 = math.MaxUint64 / 4
-	var ourHTLCs int
-	for i, record := range rows {
-		recordAlias := record[9]
+
+	// We're loading in a snapshot of the reputation values we've
+	// bootstrapped for all nodes, but we're only interested in our own
+	// values. Each channel is examined in both an incoming and outgoing
+	// direction, so we record each direction per channel.
+	resp := make(map[lnwire.ShortChannelID]lrc.ChannelHistory)
+	for _, record := range rows {
+		if len(record) < 14 {
+			return Reputations{}, errors.New("invalid record length")
+		}
+
+		// Skip channels that don't belong to us.
+		recordAlias := record[0]
 		if recordAlias != alias {
 			continue
 		}
 
-		addTimeUnix, err := strconv.ParseInt(record[2], 10, 64)
+		// First get data that's relevant to the incoming direction:
+		chanIn, err := strconv.ParseInt(record[1], 10, 64)
 		if err != nil {
-			return fmt.Errorf("add time: %w", err)
+			return Reputations{}, fmt.Errorf("error parsing chan_in: %v", err)
 		}
-
-		resolveTimeUnix, err := strconv.ParseInt(record[3], 10, 64)
+		reputationIn, err := strconv.ParseFloat(record[3], 64)
 		if err != nil {
-			return fmt.Errorf("remove time: %w", err)
+			return Reputations{}, fmt.Errorf("error parsing reputation_in: %v", err)
 		}
 
-		amountIn, err := strconv.ParseInt(record[0], 10, 64)
+		revenueIn, err := strconv.ParseFloat(record[4], 64)
 		if err != nil {
-			return fmt.Errorf("amount in: %w", err)
+			return Reputations{}, fmt.Errorf("error parsing revenue_in: %v", err)
 		}
-
-		amountOut, err := strconv.ParseInt(record[4], 10, 64)
+		reputationInNS, err := strconv.ParseInt(record[7], 10, 64)
 		if err != nil {
-			return fmt.Errorf("amount out: %w", err)
+			return Reputations{}, fmt.Errorf("error parsing reputation_in_ns: %v", err)
 		}
 
-		cltvIn, err := strconv.ParseInt(record[1], 10, 64)
+		revenueInNS, err := strconv.ParseInt(record[8], 10, 64)
 		if err != nil {
-			return fmt.Errorf("cltv in: %w", err)
+			return Reputations{}, fmt.Errorf("error parsing revenue_in_ns: %v", err)
 		}
 
-		cltvOut, err := strconv.ParseInt(record[5], 10, 64)
+		// We can expect channels to be written multiple times, but they'll always
+		// have the same values so it's safe to overwrite here.
+		// TODO: assert values the same
+		incomingSCID := lnwire.NewShortChanIDFromInt(uint64(chanIn))
+		incomingHistory, _ := resp[incomingSCID]
+		incomingHistory.IncomingReputation = &lrc.DecayingAverageStart{
+			LastUpdate: time.Unix(0, reputationInNS),
+			Value:      reputationIn,
+		}
+		incomingHistory.Revenue = &lrc.DecayingAverageStart{
+			LastUpdate: time.Unix(0, revenueInNS),
+			Value:      revenueIn,
+		}
+
+		// Next, get data that's relevant for the outgoing channel.
+		chanOut, err := strconv.ParseInt(record[2], 10, 64)
 		if err != nil {
-			return fmt.Errorf("cltv out: %v", err)
+			return Reputations{}, fmt.Errorf("error parsing chan_out: %v", err)
 		}
 
-		if cltvIn < cltvOut {
-			return fmt.Errorf("cltv in %v < cltv out %v", cltvIn, cltvOut)
-		}
-
-		incomingChannel, err := strconv.ParseInt(record[10], 10, 64)
+		reputationOut, err := strconv.ParseFloat(record[5], 64)
 		if err != nil {
-			return fmt.Errorf("incoming channel: %w", err)
+			return Reputations{}, fmt.Errorf("error parsing reputation_out: %v", err)
 		}
 
-		outgoingChannel, err := strconv.ParseInt(record[11], 10, 64)
+		revenueOut, err := strconv.ParseFloat(record[6], 64)
 		if err != nil {
-			return fmt.Errorf("outgoing channel: %w", err)
+			return Reputations{}, fmt.Errorf("error parsing revenue_out: %v", err)
 		}
 
-		htlcInfo := &HtlcInfo{
-			addTime:      time.Unix(0, addTimeUnix),
-			resolveTime:  time.Unix(0, resolveTimeUnix),
-			settled:      true, // note: hard coding rn
-			incomingMsat: lnwire.MilliSatoshi(amountIn),
-			outgoingMsat: lnwire.MilliSatoshi(amountOut),
-			// Note: we don't provide incoming/outgoing peer rn.
-			incomingCircuit: circuitKey{
-				channel: uint64(incomingChannel),
-				htlc:    startIdx + uint64(i),
-			},
-			outgoingCircuit: circuitKey{
-				channel: uint64(outgoingChannel),
-				htlc:    startIdx + uint64(i),
-			},
-			incomingEndorsed: lrc.Endorsement(1),
-			outgoingEndorsed: lrc.Endorsement(0),
-			cltvDelta:        uint32(cltvIn - cltvOut),
+		reputationOutNS, err := strconv.ParseInt(record[9], 10, 64)
+		if err != nil {
+			return Reputations{}, fmt.Errorf("error parsing reputation_out_ns: %v", err)
 		}
 
-		// Track imported HTLC count.
-		ourHTLCs++
-
-		// Append the HtlcInfo to the slice
-		if err := db.insertHtlcResolution(ctx, htlcInfo); err != nil {
-			return err
+		revenueOutNS, err := strconv.ParseInt(record[10], 10, 64)
+		if err != nil {
+			return Reputations{}, fmt.Errorf("error parsing revenue_out_ns: %v", err)
 		}
+
+		outgoingScid := lnwire.NewShortChanIDFromInt(uint64(chanOut))
+		outgoingHistory, _ := resp[outgoingScid]
+		outgoingHistory.IncomingReputation = &lrc.DecayingAverageStart{
+			LastUpdate: time.Unix(0, reputationOutNS),
+			Value:      reputationOut,
+		}
+		outgoingHistory.Revenue = &lrc.DecayingAverageStart{
+			LastUpdate: time.Unix(0, revenueOutNS),
+			Value:      revenueOut,
+		}
+		// Set values in the map.
+		resp[incomingSCID] = incomingHistory
+		resp[outgoingScid] = outgoingHistory
+
 	}
 
-	log.Infof("Successfully imported: %v htlcs for node alias: %v.", ourHTLCs, alias)
+	log.Infof("Successfully imported: %v channels for node alias: %v.", len(resp),
+		alias)
 
-	return nil
+	return resp, nil
 }

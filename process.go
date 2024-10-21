@@ -133,7 +133,7 @@ func NewProcess(client lndclient, log *zap.SugaredLogger,
 		db.InsertThreshold,
 		chanHistoryFunc,
 		channels,
-                jamGeneral,
+		jamGeneral,
 	)
 	if err != nil {
 		return nil, err
@@ -183,6 +183,8 @@ func (p *process) UpdateLimit(ctx context.Context, peer *route.Vertex,
 		return ctx.Err()
 	}
 }
+
+type Reputations map[lnwire.ShortChannelID]lrc.ChannelHistory
 
 func (p *process) Run(ctx context.Context) error {
 	p.log.Info("CircuitBreaker started")
