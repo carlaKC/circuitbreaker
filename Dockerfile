@@ -22,7 +22,6 @@ COPY --from=build_backend /usr/bin/circuitbreaker /usr/bin/circuitbreaker
 
 # Copy in historical reputation data and script to adjust it
 COPY historical_data/raw_data_csv /raw_data.csv
-COPY historical_data/progress_timestamps.py /progress_timestamps.py
 
 # Copy the entrypoint script into the container
 COPY entrypoint.sh /entrypoint.sh
