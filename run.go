@@ -253,10 +253,9 @@ func loadHistoricalForwards(ctx context.Context, path string, db *Db,
 		return Reputations{}, err
 	}
 
-	// We're loading in historical HTLCs, but we also want to allow
-	// regular operation of the channel (and we require unique index for
-	// our db) so we start with an index that we won't hit for real
-	// forwards once circuitbreaker starts running.
+	// We'll set the timestamp on all our bootstrapped data to the present,
+	// so that we're booting up as if we've just processed this history.
+	startTime := time.Now()
 
 	// We're loading in a snapshot of the reputation values we've
 	// bootstrapped for all nodes, but we're only interested in our own
@@ -288,15 +287,6 @@ func loadHistoricalForwards(ctx context.Context, path string, db *Db,
 		if err != nil {
 			return Reputations{}, fmt.Errorf("error parsing revenue_in: %v", err)
 		}
-		reputationInNS, err := strconv.ParseInt(record[7], 10, 64)
-		if err != nil {
-			return Reputations{}, fmt.Errorf("error parsing reputation_in_ns: %v", err)
-		}
-
-		revenueInNS, err := strconv.ParseInt(record[8], 10, 64)
-		if err != nil {
-			return Reputations{}, fmt.Errorf("error parsing revenue_in_ns: %v", err)
-		}
 
 		// We can expect channels to be written multiple times, but they'll always
 		// have the same values so it's safe to overwrite here.
@@ -304,11 +294,11 @@ func loadHistoricalForwards(ctx context.Context, path string, db *Db,
 		incomingSCID := lnwire.NewShortChanIDFromInt(uint64(chanIn))
 		incomingHistory, _ := resp[incomingSCID]
 		incomingHistory.IncomingReputation = &lrc.DecayingAverageStart{
-			LastUpdate: time.Unix(0, reputationInNS),
+			LastUpdate: startTime,
 			Value:      reputationIn,
 		}
 		incomingHistory.Revenue = &lrc.DecayingAverageStart{
-			LastUpdate: time.Unix(0, revenueInNS),
+			LastUpdate: startTime,
 			Value:      revenueIn,
 		}
 
@@ -328,30 +318,19 @@ func loadHistoricalForwards(ctx context.Context, path string, db *Db,
 			return Reputations{}, fmt.Errorf("error parsing revenue_out: %v", err)
 		}
 
-		reputationOutNS, err := strconv.ParseInt(record[9], 10, 64)
-		if err != nil {
-			return Reputations{}, fmt.Errorf("error parsing reputation_out_ns: %v", err)
-		}
-
-		revenueOutNS, err := strconv.ParseInt(record[10], 10, 64)
-		if err != nil {
-			return Reputations{}, fmt.Errorf("error parsing revenue_out_ns: %v", err)
-		}
-
 		outgoingScid := lnwire.NewShortChanIDFromInt(uint64(chanOut))
 		outgoingHistory, _ := resp[outgoingScid]
 		outgoingHistory.OutgoingReputation = &lrc.DecayingAverageStart{
-			LastUpdate: time.Unix(0, reputationOutNS),
+			LastUpdate: startTime,
 			Value:      reputationOut,
 		}
 		outgoingHistory.Revenue = &lrc.DecayingAverageStart{
-			LastUpdate: time.Unix(0, revenueOutNS),
+			LastUpdate: startTime,
 			Value:      revenueOut,
 		}
 		// Set values in the map.
 		resp[incomingSCID] = incomingHistory
 		resp[outgoingScid] = outgoingHistory
-
 	}
 
 	log.Infof("Successfully imported: %v channels for node alias: %v.", len(resp),
