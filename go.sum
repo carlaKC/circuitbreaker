@@ -124,8 +124,8 @@ github.com/btcsuite/winsvc v1.0.0 h1:J9B4L7e3oqhXOcm+2IuNApwzQec85lE+QaikUcCs+dk
 github.com/btcsuite/winsvc v1.0.0/go.mod h1:jsenWakMcC0zFBFurPLEAyrnc/teJEM1O46fmI40EZs=
 github.com/carlakc/lnd v0.17.0-beta.rc3.0.20240117154733-294acee87453 h1:2IhPHX5hxrxjn8fn/QqqgZGi6tI0uORnPgIGLbOHxcs=
 github.com/carlakc/lnd v0.17.0-beta.rc3.0.20240117154733-294acee87453/go.mod h1:/GZW6PBvMBhlVQVneLUyn4lWdfFcQGuFiW/Fju3tS7g=
-github.com/carlakc/lrc v0.0.0-20241008145407-24900f80b6f0 h1:HFr/idpjVRuaYdvuIZXw5384zf1ugpqtIWd2aPuQ6/M=
-github.com/carlakc/lrc v0.0.0-20241008145407-24900f80b6f0/go.mod h1:3HEj4Y0fi6o9waJwJABPcgUXBFebNwpAyioFh7peJ1U=
+github.com/carlakc/lrc v0.0.0-20241023195737-9d55c308bce9 h1:NirWyERVfGecFUNnnzDz20sy8z4jrn/j1adXGo20tRI=
+github.com/carlakc/lrc v0.0.0-20241023195737-9d55c308bce9/go.mod h1:3HEj4Y0fi6o9waJwJABPcgUXBFebNwpAyioFh7peJ1U=
 github.com/cenkalti/backoff/v4 v4.1.1/go.mod h1:scbssz8iZGpm3xbr14ovlUdkxfGXNInqkPWOWmG2CLw=
 github.com/cenkalti/backoff/v4 v4.1.2/go.mod h1:scbssz8iZGpm3xbr14ovlUdkxfGXNInqkPWOWmG2CLw=
 github.com/cenkalti/backoff/v4 v4.1.3 h1:cFAlzYUlVYDysBEH2T5hyJZMh3+5+WCBvSnK6Q8UtC4=
